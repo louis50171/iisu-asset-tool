@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Horizontal accent line with cyan to magenta gradient (iiSU Network style) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:startColor="@color/accent_cyan"
+        android:centerColor="@color/iisu_purple"
+        android:endColor="@color/accent_magenta"
+        android:angle="0" />
+    <size android:height="2dp" />
+</shape>

@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+    iiSU Network Theme for Android
+    Matches the desktop Qt theme aesthetic:
+    - Primary Gradient: Cyan (#00D4FF) to Magenta (#FF00FF)
+    - Glassy water-crystal aesthetic
+    - Dark background with accent highlights
+
+    Typography Rules (from desktop Qt theme):
+    - Continuum Bold: Single word labels, tab names, buttons, short titles
+    - Cal Sans: Multi-word text (2+ words), descriptions, body text
+    -->
+
+    <!-- Base application theme - Dark mode (default) -->
+    <style name="Theme.IiSUAssetTool" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Primary colors -->
+        <item name="colorPrimary">@color/accent_cyan</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+
+        <!-- Secondary colors (magenta accent) -->
+        <item name="colorSecondary">@color/accent_magenta</item>
+        <item name="colorSecondaryVariant">@color/iisu_purple</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+
+        <!-- Tertiary for additional accent -->
+        <item name="colorTertiary">@color/iisu_purple</item>
+
+        <!-- Background and surface (matches desktop #1A1E22 / #2D3238) -->
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorSurfaceVariant">@color/surface_variant</item>
+        <item name="colorOnBackground">@color/on_background</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+
+        <!-- Error -->
+        <item name="colorError">@color/error</item>
+
+        <!-- Status bar (dark to match theme) -->
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:navigationBarColor">@color/primary</item>
+
+        <!-- Window background -->
+        <item name="android:windowBackground">@color/background</item>
+
+        <!-- Custom Typography -->
+        <item name="android:textViewStyle">@style/IisuTextView</item>
+        <item name="textAppearanceHeadlineLarge">@style/IisuTextAppearance.HeadlineLarge</item>
+        <item name="textAppearanceHeadlineMedium">@style/IisuTextAppearance.HeadlineMedium</item>
+        <item name="textAppearanceHeadlineSmall">@style/IisuTextAppearance.HeadlineSmall</item>
+        <item name="textAppearanceTitleLarge">@style/IisuTextAppearance.TitleLarge</item>
+        <item name="textAppearanceTitleMedium">@style/IisuTextAppearance.TitleMedium</item>
+        <item name="textAppearanceTitleSmall">@style/IisuTextAppearance.TitleSmall</item>
+        <item name="textAppearanceBodyLarge">@style/IisuTextAppearance.BodyLarge</item>
+        <item name="textAppearanceBodyMedium">@style/IisuTextAppearance.BodyMedium</item>
+        <item name="textAppearanceBodySmall">@style/IisuTextAppearance.BodySmall</item>
+        <item name="textAppearanceLabelLarge">@style/IisuTextAppearance.LabelLarge</item>
+        <item name="textAppearanceLabelMedium">@style/IisuTextAppearance.LabelMedium</item>
+        <item name="textAppearanceLabelSmall">@style/IisuTextAppearance.LabelSmall</item>
+    </style>
+
+    <!-- Light theme variant -->
+    <style name="Theme.IiSUAssetTool.Light" parent="Theme.Material3.Light.NoActionBar">
+        <!-- Primary colors - use cyan accent -->
+        <item name="colorPrimary">@color/accent_cyan</item>
+        <item name="colorPrimaryVariant">@color/iisu_purple</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+
+        <!-- Secondary colors (magenta accent) -->
+        <item name="colorSecondary">@color/accent_magenta</item>
+        <item name="colorSecondaryVariant">@color/iisu_purple</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+
+        <!-- Tertiary for additional accent -->
+        <item name="colorTertiary">@color/iisu_purple</item>
+
+        <!-- Background and surface (light colors) -->
+        <item name="android:colorBackground">@color/background_light</item>
+        <item name="colorSurface">@color/surface_light</item>
+        <item name="colorSurfaceVariant">@color/surface_variant_light</item>
+        <item name="colorOnBackground">@color/on_background_light</item>
+        <item name="colorOnSurface">@color/on_surface_light</item>
+
+        <!-- Error -->
+        <item name="colorError">@color/error</item>
+
+        <!-- Status bar (light background with dark icons) -->
+        <item name="android:statusBarColor">@color/surface_light</item>
+        <item name="android:navigationBarColor">@color/surface_light</item>
+        <item name="android:windowLightStatusBar">true</item>
+
+        <!-- Window background -->
+        <item name="android:windowBackground">@color/background_light</item>
+
+        <!-- Custom Typography (same as dark, inherited) -->
+        <item name="android:textViewStyle">@style/IisuTextView.Light</item>
+        <item name="textAppearanceHeadlineLarge">@style/IisuTextAppearance.HeadlineLarge.Light</item>
+        <item name="textAppearanceHeadlineMedium">@style/IisuTextAppearance.HeadlineMedium.Light</item>
+        <item name="textAppearanceHeadlineSmall">@style/IisuTextAppearance.HeadlineSmall.Light</item>
+        <item name="textAppearanceTitleLarge">@style/IisuTextAppearance.TitleLarge.Light</item>
+        <item name="textAppearanceTitleMedium">@style/IisuTextAppearance.TitleMedium.Light</item>
+        <item name="textAppearanceTitleSmall">@style/IisuTextAppearance.TitleSmall.Light</item>
+        <item name="textAppearanceBodyLarge">@style/IisuTextAppearance.BodyLarge.Light</item>
+        <item name="textAppearanceBodyMedium">@style/IisuTextAppearance.BodyMedium.Light</item>
+        <item name="textAppearanceBodySmall">@style/IisuTextAppearance.BodySmall.Light</item>
+        <item name="textAppearanceLabelLarge">@style/IisuTextAppearance.LabelLarge.Light</item>
+        <item name="textAppearanceLabelMedium">@style/IisuTextAppearance.LabelMedium.Light</item>
+        <item name="textAppearanceLabelSmall">@style/IisuTextAppearance.LabelSmall.Light</item>
+    </style>
+
+    <!-- Light theme text styles -->
+    <style name="IisuTextView.Light" parent="android:Widget.TextView">
+        <item name="android:fontFamily">@font/calsans</item>
+        <item name="android:textColor">@color/text_primary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.HeadlineLarge.Light" parent="IisuTextAppearance.HeadlineLarge">
+        <item name="android:textColor">@color/text_primary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.HeadlineMedium.Light" parent="IisuTextAppearance.HeadlineMedium">
+        <item name="android:textColor">@color/text_primary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.HeadlineSmall.Light" parent="IisuTextAppearance.HeadlineSmall">
+        <item name="android:textColor">@color/text_primary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.TitleLarge.Light" parent="IisuTextAppearance.TitleLarge">
+        <item name="android:textColor">@color/text_primary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.TitleMedium.Light" parent="IisuTextAppearance.TitleMedium">
+        <item name="android:textColor">@color/text_primary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.TitleSmall.Light" parent="IisuTextAppearance.TitleSmall">
+        <item name="android:textColor">@color/text_primary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.BodyLarge.Light" parent="IisuTextAppearance.BodyLarge">
+        <item name="android:textColor">@color/text_primary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.BodyMedium.Light" parent="IisuTextAppearance.BodyMedium">
+        <item name="android:textColor">@color/text_primary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.BodySmall.Light" parent="IisuTextAppearance.BodySmall">
+        <item name="android:textColor">@color/text_secondary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.LabelLarge.Light" parent="IisuTextAppearance.LabelLarge">
+        <item name="android:textColor">@color/text_primary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.LabelMedium.Light" parent="IisuTextAppearance.LabelMedium">
+        <item name="android:textColor">@color/text_primary_light</item>
+    </style>
+
+    <style name="IisuTextAppearance.LabelSmall.Light" parent="IisuTextAppearance.LabelSmall">
+        <item name="android:textColor">@color/text_secondary_light</item>
+    </style>
+
+    <!-- Touch-friendly button style -->
+    <style name="TouchFriendlyButton" parent="Widget.Material3.Button">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:letterSpacing">0.04</item>
+    </style>
+
+    <!-- Large touch target for cards/list items -->
+    <style name="TouchFriendlyCard" parent="Widget.Material3.CardView.Filled">
+        <item name="android:minHeight">72dp</item>
+        <item name="contentPadding">16dp</item>
+    </style>
+
+    <!-- iiSU-style navigation indicator (cyan glow effect) -->
+    <style name="IisuNavIndicator" parent="Widget.Material3.NavigationRailView.ActiveIndicator">
+        <item name="android:color">@color/nav_indicator</item>
+    </style>
+
+    <!-- Platform card style -->
+    <style name="PlatformCard" parent="Widget.Material3.CardView.Filled">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">8dp</item>
+        <item name="contentPadding">0dp</item>
+    </style>
+
+    <!-- iiSU Primary action button (gradient purple to magenta) -->
+    <style name="IisuPrimaryButton" parent="Widget.Material3.Button">
+        <item name="android:background">@drawable/bg_button_gradient</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <!-- iiSU Secondary button (cyan to green gradient) -->
+    <style name="IisuSecondaryButton" parent="Widget.Material3.Button">
+        <item name="android:background">@drawable/bg_button_cyan</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <!-- iiSU Input field style -->
+    <style name="IisuEditText" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">@color/input_background</item>
+        <item name="boxStrokeColor">@color/input_border</item>
+        <item name="boxCornerRadiusTopStart">8dp</item>
+        <item name="boxCornerRadiusTopEnd">8dp</item>
+        <item name="boxCornerRadiusBottomStart">8dp</item>
+        <item name="boxCornerRadiusBottomEnd">8dp</item>
+    </style>
+
+    <!-- iiSU Progress bar style -->
+    <style name="IisuProgressBar" parent="Widget.Material3.LinearProgressIndicator">
+        <item name="android:progressDrawable">@drawable/bg_progress_gradient</item>
+        <item name="trackCornerRadius">10dp</item>
+    </style>
+
+    <!-- iiSU Card style (glassy aesthetic) -->
+    <style name="IisuCard" parent="Widget.Material3.CardView.Filled">
+        <item name="cardBackgroundColor">@color/card_background</item>
+        <item name="cardCornerRadius">12dp</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">@color/border_color</item>
+        <item name="cardElevation">0dp</item>
+    </style>
+
+    <!-- =================================================================== -->
+    <!-- iiSU TYPOGRAPHY STYLES                                              -->
+    <!-- Continuum Bold: Single word labels, tab names, buttons, short titles-->
+    <!-- Cal Sans: Multi-word text (2+ words), descriptions, body text       -->
+    <!-- =================================================================== -->
+
+    <!-- Base TextView style -->
+    <style name="IisuTextView" parent="android:Widget.TextView">
+        <item name="android:fontFamily">@font/calsans</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- Headlines - Continuum Bold (for impact titles) -->
+    <style name="IisuTextAppearance.HeadlineLarge" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">32sp</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <style name="IisuTextAppearance.HeadlineMedium" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">28sp</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <style name="IisuTextAppearance.HeadlineSmall" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <!-- Titles - Continuum Bold (for section headers) -->
+    <style name="IisuTextAppearance.TitleLarge" parent="TextAppearance.Material3.TitleLarge">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <style name="IisuTextAppearance.TitleMedium" parent="TextAppearance.Material3.TitleMedium">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <style name="IisuTextAppearance.TitleSmall" parent="TextAppearance.Material3.TitleSmall">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <!-- Body Text - Cal Sans (for multi-word content) -->
+    <style name="IisuTextAppearance.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
+        <item name="fontFamily">@font/calsans</item>
+        <item name="android:fontFamily">@font/calsans</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:lineSpacingMultiplier">1.4</item>
+    </style>
+
+    <style name="IisuTextAppearance.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
+        <item name="fontFamily">@font/calsans</item>
+        <item name="android:fontFamily">@font/calsans</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:lineSpacingMultiplier">1.4</item>
+    </style>
+
+    <style name="IisuTextAppearance.BodySmall" parent="TextAppearance.Material3.BodySmall">
+        <item name="fontFamily">@font/calsans</item>
+        <item name="android:fontFamily">@font/calsans</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:lineSpacingMultiplier">1.4</item>
+    </style>
+
+    <!-- Labels - Continuum Bold (for single-word labels, buttons) -->
+    <style name="IisuTextAppearance.LabelLarge" parent="TextAppearance.Material3.LabelLarge">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.05</item>
+    </style>
+
+    <style name="IisuTextAppearance.LabelMedium" parent="TextAppearance.Material3.LabelMedium">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.05</item>
+    </style>
+
+    <style name="IisuTextAppearance.LabelSmall" parent="TextAppearance.Material3.LabelSmall">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.05</item>
+    </style>
+
+    <!-- =================================================================== -->
+    <!-- SPECIALIZED TEXT STYLES                                             -->
+    <!-- =================================================================== -->
+
+    <!-- Base text appearance for specialized styles -->
+    <style name="IisuTextAppearance" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <!-- Page Title (single word, Continuum Bold, cyan gradient text) -->
+    <style name="IisuTextAppearance.PageTitle">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/accent_cyan</item>
+        <item name="android:textSize">28sp</item>
+        <item name="android:letterSpacing">0.03</item>
+    </style>
+
+    <!-- Section Header (Continuum Bold, subtle glow effect via shadow) -->
+    <style name="IisuTextAppearance.SectionHeader">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:shadowColor">@color/accent_cyan</item>
+        <item name="android:shadowDx">0</item>
+        <item name="android:shadowDy">0</item>
+        <item name="android:shadowRadius">4</item>
+    </style>
+
+    <!-- Description Text (Cal Sans, secondary color) -->
+    <style name="IisuTextAppearance.Description">
+        <item name="fontFamily">@font/calsans</item>
+        <item name="android:fontFamily">@font/calsans</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:lineSpacingMultiplier">1.5</item>
+    </style>
+
+    <!-- Status Text (Cal Sans, for status messages) -->
+    <style name="IisuTextAppearance.Status">
+        <item name="fontFamily">@font/calsans</item>
+        <item name="android:fontFamily">@font/calsans</item>
+        <item name="android:textColor">@color/accent_cyan</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- Navigation Label (Continuum Bold, for nav rail) -->
+    <style name="IisuTextAppearance.NavLabel">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:letterSpacing">0.03</item>
+    </style>
+
+    <!-- Button Text (Continuum Bold) -->
+    <style name="IisuTextAppearance.Button">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <!-- Game Title (Cal Sans, for game names which are usually multi-word) -->
+    <style name="IisuTextAppearance.GameTitle">
+        <item name="fontFamily">@font/calsans</item>
+        <item name="android:fontFamily">@font/calsans</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:maxLines">2</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+
+    <!-- Platform Label (Continuum Bold, single word platform names) -->
+    <style name="IisuTextAppearance.PlatformLabel">
+        <item name="fontFamily">@font/continuum</item>
+        <item name="android:fontFamily">@font/continuum</item>
+        <item name="android:textColor">@color/iisu_purple</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+</resources>

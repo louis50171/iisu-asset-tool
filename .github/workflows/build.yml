@@ -1,0 +1,226 @@
+name: Build Releases
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install PySide6
+        pip install pyinstaller
+
+    - name: Build Windows executable
+      run: |
+        pyinstaller build_windows.spec
+
+    - name: Package Windows release
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path releases\windows\iiSU_Asset_Tool
+        Copy-Item dist\iiSU_Asset_Tool.exe releases\windows\iiSU_Asset_Tool\
+        Copy-Item -Recurse borders releases\windows\iiSU_Asset_Tool\
+        Copy-Item -Recurse fonts releases\windows\iiSU_Asset_Tool\
+        Copy-Item -Recurse platform_icons releases\windows\iiSU_Asset_Tool\
+        Copy-Item -Recurse fallback_icons releases\windows\iiSU_Asset_Tool\
+        Copy-Item -Recurse templates releases\windows\iiSU_Asset_Tool\
+        Copy-Item -Recurse src releases\windows\iiSU_Asset_Tool\
+        Copy-Item config.yaml releases\windows\iiSU_Asset_Tool\
+        Copy-Item logo.png releases\windows\iiSU_Asset_Tool\
+        Copy-Item iisu_theme.qss releases\windows\iiSU_Asset_Tool\
+        Copy-Item iisu_theme_light.qss releases\windows\iiSU_Asset_Tool\
+        "iiSU Asset Tool - Windows" | Out-File releases\windows\iiSU_Asset_Tool\README.txt
+        Compress-Archive -Path releases\windows\iiSU_Asset_Tool -DestinationPath releases\windows\iiSU_Asset_Tool_Windows.zip
+
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: releases/windows/iiSU_Asset_Tool_Windows.zip
+
+  build-linux:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libxcb-xinerama0 \
+          libxcb-cursor0 \
+          libxkbcommon-x11-0 \
+          libgl1-mesa-glx \
+          libegl1 \
+          libxcb-icccm4 \
+          libxcb-image0 \
+          libxcb-keysyms1 \
+          libxcb-randr0 \
+          libxcb-render-util0 \
+          libxcb-shape0
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install PySide6
+        pip install pyinstaller
+
+    - name: Build Linux executable
+      run: |
+        pyinstaller build_linux.spec
+
+    - name: Package Linux release
+      run: |
+        mkdir -p releases/linux/iiSU_Asset_Tool
+        cp dist/iiSU_Asset_Tool releases/linux/iiSU_Asset_Tool/
+        cp -r borders releases/linux/iiSU_Asset_Tool/
+        cp -r fonts releases/linux/iiSU_Asset_Tool/
+        cp -r platform_icons releases/linux/iiSU_Asset_Tool/
+        cp -r fallback_icons releases/linux/iiSU_Asset_Tool/
+        cp -r templates releases/linux/iiSU_Asset_Tool/
+        cp -r src releases/linux/iiSU_Asset_Tool/
+        cp config.yaml releases/linux/iiSU_Asset_Tool/
+        cp logo.png releases/linux/iiSU_Asset_Tool/
+        cp iisu_theme.qss releases/linux/iiSU_Asset_Tool/
+        cp iisu_theme_light.qss releases/linux/iiSU_Asset_Tool/
+        echo "iiSU Asset Tool - Linux" > releases/linux/iiSU_Asset_Tool/README.txt
+        echo "Run ./iiSU_Asset_Tool to start the application" >> releases/linux/iiSU_Asset_Tool/README.txt
+        chmod +x releases/linux/iiSU_Asset_Tool/iiSU_Asset_Tool
+        cd releases/linux && tar -czvf iiSU_Asset_Tool_Linux.tar.gz iiSU_Asset_Tool
+
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: releases/linux/iiSU_Asset_Tool_Linux.tar.gz
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install PySide6
+        pip install pyinstaller
+
+    - name: Build macOS app
+      run: |
+        pyinstaller build_macos.spec
+
+    - name: Create app icon (icns)
+      run: |
+        # Create iconset directory
+        mkdir -p icon.iconset
+        # Create different icon sizes from logo.png
+        sips -z 16 16     logo.png --out icon.iconset/icon_16x16.png
+        sips -z 32 32     logo.png --out icon.iconset/icon_16x16@2x.png
+        sips -z 32 32     logo.png --out icon.iconset/icon_32x32.png
+        sips -z 64 64     logo.png --out icon.iconset/icon_32x32@2x.png
+        sips -z 128 128   logo.png --out icon.iconset/icon_128x128.png
+        sips -z 256 256   logo.png --out icon.iconset/icon_128x128@2x.png
+        sips -z 256 256   logo.png --out icon.iconset/icon_256x256.png
+        sips -z 512 512   logo.png --out icon.iconset/icon_256x256@2x.png
+        sips -z 512 512   logo.png --out icon.iconset/icon_512x512.png
+        sips -z 1024 1024 logo.png --out icon.iconset/icon_512x512@2x.png
+        # Convert to icns
+        iconutil -c icns icon.iconset -o app_icon.icns
+
+    - name: Create DMG
+      run: |
+        # Create releases directory
+        mkdir -p releases
+
+        # Create a temporary directory for DMG contents
+        mkdir -p dmg_contents
+
+        # Copy the app bundle
+        cp -R "dist/iiSU Asset Tool.app" dmg_contents/
+
+        # Set the app icon
+        cp app_icon.icns "dmg_contents/iiSU Asset Tool.app/Contents/Resources/app_icon.icns"
+
+        # Update Info.plist to use the icon
+        /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string app_icon" "dmg_contents/iiSU Asset Tool.app/Contents/Info.plist" 2>/dev/null || \
+        /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile app_icon" "dmg_contents/iiSU Asset Tool.app/Contents/Info.plist"
+
+        # Create Applications symlink for drag-and-drop install
+        ln -s /Applications dmg_contents/Applications
+
+        # Create the DMG
+        hdiutil create -volname "iiSU Asset Tool" \
+          -srcfolder dmg_contents \
+          -ov -format UDZO \
+          "releases/iiSU_Asset_Tool_macOS.dmg"
+
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-build
+        path: releases/iiSU_Asset_Tool_macOS.dmg
+
+  create-release:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+    - name: Download Windows artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-build
+        path: ./
+
+    - name: Download Linux artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: linux-build
+        path: ./
+
+    - name: Download macOS artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: macos-build
+        path: ./
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          iiSU_Asset_Tool_Windows.zip
+          iiSU_Asset_Tool_Linux.tar.gz
+          iiSU_Asset_Tool_macOS.dmg
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

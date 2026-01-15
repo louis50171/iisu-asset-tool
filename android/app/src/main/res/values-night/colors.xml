@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+    Night mode (dark theme) color overrides
+    These colors are used when dark mode is active
+    -->
+
+    <!-- Use dark theme colors in night mode -->
+    <color name="theme_background">@color/background</color>
+    <color name="theme_surface">@color/surface</color>
+    <color name="theme_surface_variant">@color/surface_variant</color>
+    <color name="theme_text_primary">@color/text_primary</color>
+    <color name="theme_text_secondary">@color/text_secondary</color>
+    <color name="theme_card_background">@color/card_background</color>
+    <color name="theme_border_color">@color/border_color</color>
+    <color name="theme_input_background">@color/input_background</color>
+    <color name="theme_input_border">@color/input_border</color>
+</resources>

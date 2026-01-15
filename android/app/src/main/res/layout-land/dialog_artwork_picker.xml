@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Landscape layout - constrained height with scrollable content and buttons always visible -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/background"
+    android:padding="12dp">
+
+    <!-- Header row - compact -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/textTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                android:maxLines="1"
+                android:ellipsize="end"
+                tools:text="Select Icon for Super Mario Bros." />
+
+            <TextView
+                android:id="@+id/textSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                tools:text="Found 5 options from 3 sources" />
+
+        </LinearLayout>
+
+        <!-- Buttons in header for landscape -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Cancel"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:minWidth="0dp"
+            android:paddingHorizontal="12dp"
+            style="@style/Widget.Material3.Button.TextButton" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSave"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Save"
+            android:textSize="12sp"
+            android:textColor="@color/text_primary"
+            android:enabled="false"
+            android:minWidth="0dp"
+            android:paddingHorizontal="16dp"
+            app:backgroundTint="@color/accent_cyan"
+            app:cornerRadius="6dp" />
+
+    </LinearLayout>
+
+    <!-- Scrollable content area with max height -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <!-- Current Image Section (only shown if exists) - side by side in landscape -->
+            <LinearLayout
+                android:id="@+id/layoutCurrentImage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginEnd="12dp"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Current:"
+                    android:textSize="11sp"
+                    android:textColor="@color/accent_magenta" />
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="70dp"
+                    android:layout_height="70dp"
+                    android:layout_marginTop="2dp"
+                    app:cardBackgroundColor="@color/surface"
+                    app:cardCornerRadius="6dp"
+                    app:strokeWidth="2dp"
+                    app:strokeColor="@color/accent_magenta">
+
+                    <ImageView
+                        android:id="@+id/imageCurrentArtwork"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop" />
+
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+            <!-- Options section -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <!-- Options Label -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Available Options:"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/accent_cyan" />
+
+                <!-- Loading indicator -->
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/progressBar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="8dp"
+                    android:indeterminate="true"
+                    android:visibility="gone" />
+
+                <!-- No options message -->
+                <TextView
+                    android:id="@+id/textNoOptions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="No artwork found for this game."
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary"
+                    android:visibility="gone" />
+
+                <!-- Options Grid (horizontal scroll) - smaller thumbnails in landscape -->
+                <HorizontalScrollView
+                    android:id="@+id/scrollOptions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/layoutOptions"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingVertical="4dp" />
+
+                </HorizontalScrollView>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</LinearLayout>

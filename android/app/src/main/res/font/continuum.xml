@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<font-family xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Continuum Bold - for single word labels, tab names, buttons, short titles -->
+    <font
+        android:font="@font/continuum_bold"
+        android:fontStyle="normal"
+        android:fontWeight="700"
+        app:font="@font/continuum_bold"
+        app:fontStyle="normal"
+        app:fontWeight="700" />
+
+</font-family>

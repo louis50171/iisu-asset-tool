@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Build artifacts
+build/
+dist/
+releases/
+*.egg-info/
+
+# Cache and data
+data/cache/
+data/dataset_cache/
+*.db
+*.sqlite
+
+# Output directories
+output/
+review/
+
+# IDE
+.vscode/
+.idea/
+.vs/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Config (optional - uncomment if you don't want to share API keys)
+# config.yaml
+
+# Logs
+*.log
+.env
+
+
+# Debug and test files
+debug_*.py
+debug_*.png
+test_*.py
+inspect_*.py
+*_debug.log
+
+# Temp files
+*.tmp
+*.bak
+tmpclaude-*
+
+# Cache directories
+.cache/
+__pycache__/
+/.claude
+
+# APK files and extracted content (for analysis)
+*.apk
+src/extracted_iiSU/
+src/starterpack.zip
+
+# Android build artifacts
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+*.aar
+*.ap_

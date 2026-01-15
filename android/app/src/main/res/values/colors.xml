@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+    iiSU Network Color Palette (matches desktop Qt theme)
+    Primary Gradient: Cyan (#00D4FF) to Magenta (#FF00FF)
+    Purple Accent: #9575CD
+    Blue Accent: #29B6F6
+    Background: #1A1E22 / #212529
+    Surface: #2D3238
+    Text Primary: #E9E9E9
+    Text Secondary: #888888
+    -->
+
+    <!-- Primary colors - matches iiSU desktop theme -->
+    <color name="primary">#1A1E22</color>
+    <color name="primary_variant">#212529</color>
+    <color name="on_primary">#FFFFFF</color>
+
+    <!-- Secondary/Accent colors -->
+    <color name="secondary">#2D3238</color>
+    <color name="secondary_variant">#3A4048</color>
+    <color name="on_secondary">#FFFFFF</color>
+
+    <!-- Background colors -->
+    <color name="background">#1A1E22</color>
+    <color name="surface">#2D3238</color>
+    <color name="on_background">#E9E9E9</color>
+    <color name="on_surface">#E9E9E9</color>
+
+    <!-- Primary gradient buttons (purple to magenta) -->
+    <color name="button_gradient_start">#2B1FD0</color>
+    <color name="button_gradient_end">#B71AEB</color>
+    <color name="button_hover_start">#3A2FE0</color>
+    <color name="button_hover_end">#C72AFB</color>
+
+    <!-- Secondary button (cyan to green) -->
+    <color name="button_preview_start">#007C92</color>
+    <color name="button_preview_end">#8FFFB1</color>
+
+    <!-- Status colors -->
+    <color name="error">#CF6679</color>
+    <color name="error_red">#EF5350</color>
+    <color name="success">#8FFFB1</color>
+    <color name="warning">#FFD54F</color>
+
+    <!-- Text colors (iiSU desktop values) -->
+    <color name="text_primary">#E9E9E9</color>
+    <color name="text_secondary">#888888</color>
+    <color name="text_hint">#666666</color>
+
+    <!-- Light theme colors -->
+    <color name="primary_light">#FFFFFF</color>
+    <color name="background_light">#F8F9FA</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="surface_variant_light">#E8EAED</color>
+    <color name="on_background_light">#1A1E22</color>
+    <color name="on_surface_light">#1A1E22</color>
+    <color name="text_primary_light">#1A1E22</color>
+    <color name="text_secondary_light">#5F6368</color>
+    <color name="card_background_light">#FFFFFF</color>
+    <color name="border_color_light">#DADCE0</color>
+    <color name="input_background_light">#F8F9FA</color>
+    <color name="input_border_light">#DADCE0</color>
+    <color name="nav_indicator_light">#3300D4FF</color>
+    <color name="dot_grid_light">#1A9575CD</color>
+    <color name="dot_grid_dark">#1500D4FF</color>
+
+    <!-- iiSU Gradient colors (cyan to magenta) -->
+    <color name="iisu_gradient_start">#00D4FF</color>
+    <color name="iisu_gradient_mid">#9575CD</color>
+    <color name="iisu_gradient_end">#FF00FF</color>
+    <color name="iisu_purple">#9575CD</color>
+    <color name="iisu_blue">#29B6F6</color>
+    <color name="iisu_red">#EF5350</color>
+    <color name="iisu_yellow">#FFD54F</color>
+    <color name="iisu_gray">#78909C</color>
+    <color name="iisu_green">#8FFFB1</color>
+
+    <!-- Asset status colors (cyan/magenta theme) -->
+    <color name="accent_cyan">#00D4FF</color>
+    <color name="accent_magenta">#FF00FF</color>
+    <color name="accent">#00D4FF</color>
+    <color name="accent_variant">#9575CD</color>
+
+    <!-- Card/Surface variants (glassy aesthetic) -->
+    <color name="surface_variant">#3A4048</color>
+    <color name="card_background">#2D3238</color>
+    <color name="border_color">#3A4048</color>
+
+    <!-- Input field colors -->
+    <color name="input_background">#1A1E22</color>
+    <color name="input_border">#3A4048</color>
+    <color name="input_focus_border">#00D4FF</color>
+
+    <!-- Selection colors -->
+    <color name="selection_background">#6600D4FF</color>
+    <color name="selection_highlight">#9900D4FF</color>
+
+    <!-- Navigation indicator -->
+    <color name="nav_indicator">#3300D4FF</color>
+
+    <!-- Theme-aware colors (overridden in values-night) -->
+    <!-- Default to light theme colors -->
+    <color name="theme_background">@color/background_light</color>
+    <color name="theme_surface">@color/surface_light</color>
+    <color name="theme_surface_variant">@color/surface_variant_light</color>
+    <color name="theme_text_primary">@color/text_primary_light</color>
+    <color name="theme_text_secondary">@color/text_secondary_light</color>
+    <color name="theme_card_background">@color/card_background_light</color>
+    <color name="theme_border_color">@color/border_color_light</color>
+    <color name="theme_input_background">@color/input_background_light</color>
+    <color name="theme_input_border">@color/input_border_light</color>
+</resources>

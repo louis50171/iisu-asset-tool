@@ -1,0 +1,1730 @@
+"""
+Custom Image Tab for iiSU Icon Generator
+Upload custom images and apply platform borders with manipulation controls.
+Optimized for performance with debouncing and caching.
+"""
+
+from pathlib import Path
+from typing import Optional, Tuple
+import math
+
+from PIL import Image, ImageOps, ImageQt, ImageChops
+from PySide6.QtCore import Qt, QPointF, QRectF, Signal, QTimer
+from PySide6.QtGui import QPixmap, QImage, QPainter, QTransform, QWheelEvent, QMouseEvent, QKeyEvent, QPen, QBrush, QColor, QCursor
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog,
+    QGroupBox, QComboBox, QMessageBox, QGraphicsView, QGraphicsScene,
+    QGraphicsPixmapItem, QSizePolicy, QButtonGroup, QDoubleSpinBox, QCheckBox
+)
+
+from run_backend import compose_with_border, center_crop_to_square, load_yaml, corner_mask_from_border
+from app_paths import get_config_path, get_borders_dir
+
+
+class TransformHandlesOverlay(QWidget):
+    """
+    Overlay widget that draws transform handles (bounding box with draggable corners/edges)
+    on top of an image preview for interactive scaling, rotation, and positioning.
+    """
+
+    # Signals emitted during handle interactions
+    scale_changed = Signal(float, float)  # scale_x, scale_y (relative change)
+    rotation_changed = Signal(float)  # rotation angle in degrees
+    position_changed = Signal(float, float)  # delta_x, delta_y (normalized 0-1)
+    transform_started = Signal()  # Emitted when user starts dragging
+    transform_finished = Signal()  # Emitted when user releases
+
+    # Handle types
+    HANDLE_NONE = 'none'
+    HANDLE_TL = 'tl'  # Top-left corner
+    HANDLE_TR = 'tr'  # Top-right corner
+    HANDLE_BL = 'bl'  # Bottom-left corner
+    HANDLE_BR = 'br'  # Bottom-right corner
+    HANDLE_T = 't'    # Top edge
+    HANDLE_B = 'b'    # Bottom edge
+    HANDLE_L = 'l'    # Left edge
+    HANDLE_R = 'r'    # Right edge
+    HANDLE_ROTATE = 'rotate'  # Rotation handle
+    HANDLE_MOVE = 'move'  # Inside bounds - move
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.setMouseTracking(True)
+
+        # Handle visual properties
+        self.handle_size = 16  # Size of corner/edge handles in pixels
+        self.rotation_handle_distance = 35  # Distance of rotation handle from top edge
+        self.rotation_handle_size = 18
+
+        # Colors
+        self.handle_color = QColor(0, 120, 215)  # Blue
+        self.handle_hover_color = QColor(0, 150, 255)  # Lighter blue
+        self.handle_active_color = QColor(255, 165, 0)  # Orange when dragging
+        self.bounds_color = QColor(0, 120, 215, 180)
+        self.rotation_line_color = QColor(0, 120, 215, 120)
+
+        # Current state
+        self.bounds = QRectF()  # Bounding box in widget coordinates
+        self.rotation = 0.0  # Current rotation angle
+        self.active_layer = 'background'  # 'background' or 'logo'
+        self.handles_visible = True
+
+        # Interaction state
+        self.hovered_handle = self.HANDLE_NONE
+        self.active_handle = self.HANDLE_NONE
+        self.drag_start_pos = QPointF()
+        self.drag_start_bounds = QRectF()
+        self.drag_start_rotation = 0.0
+
+        # Aspect ratio lock
+        self.lock_aspect_ratio = True
+
+    def set_bounds(self, bounds: QRectF):
+        """Set the bounding box for the current layer."""
+        self.bounds = bounds
+        self.update()
+
+    def set_rotation(self, rotation: float):
+        """Set the rotation angle for handle placement."""
+        self.rotation = rotation
+        self.update()
+
+    def set_active_layer(self, layer: str):
+        """Set which layer is being transformed ('background' or 'logo')."""
+        self.active_layer = layer
+        self.update()
+
+    def set_handles_visible(self, visible: bool):
+        """Show or hide the transform handles."""
+        self.handles_visible = visible
+        self.update()
+
+    def get_handle_positions(self) -> dict:
+        """Calculate positions of all handles based on current bounds and rotation."""
+        if self.bounds.isEmpty():
+            return {}
+
+        center = self.bounds.center()
+
+        # Get corners (before rotation)
+        tl = self.bounds.topLeft()
+        tr = self.bounds.topRight()
+        bl = self.bounds.bottomLeft()
+        br = self.bounds.bottomRight()
+
+        # Get edge centers
+        t = QPointF((tl.x() + tr.x()) / 2, tl.y())
+        b = QPointF((bl.x() + br.x()) / 2, bl.y())
+        l = QPointF(tl.x(), (tl.y() + bl.y()) / 2)
+        r = QPointF(tr.x(), (tr.y() + br.y()) / 2)
+
+        # Rotation handle position (above top center)
+        rotate_pos = QPointF(t.x(), t.y() - self.rotation_handle_distance)
+
+        # Apply rotation transform to all positions
+        positions = {
+            self.HANDLE_TL: tl,
+            self.HANDLE_TR: tr,
+            self.HANDLE_BL: bl,
+            self.HANDLE_BR: br,
+            self.HANDLE_T: t,
+            self.HANDLE_B: b,
+            self.HANDLE_L: l,
+            self.HANDLE_R: r,
+            self.HANDLE_ROTATE: rotate_pos,
+        }
+
+        if self.rotation != 0:
+            transform = QTransform()
+            transform.translate(center.x(), center.y())
+            transform.rotate(self.rotation)
+            transform.translate(-center.x(), -center.y())
+
+            for handle_type, pos in positions.items():
+                positions[handle_type] = transform.map(pos)
+
+        return positions
+
+    def hit_test(self, pos: QPointF) -> str:
+        """Determine which handle (if any) is at the given position."""
+        if not self.handles_visible or self.bounds.isEmpty():
+            return self.HANDLE_NONE
+
+        positions = self.get_handle_positions()
+
+        # Check rotation handle first (highest priority)
+        if self.HANDLE_ROTATE in positions:
+            rotate_pos = positions[self.HANDLE_ROTATE]
+            if self._point_in_handle(pos, rotate_pos, self.rotation_handle_size):
+                return self.HANDLE_ROTATE
+
+        # Check corner handles (higher priority than edges)
+        for handle_type in [self.HANDLE_TL, self.HANDLE_TR, self.HANDLE_BL, self.HANDLE_BR]:
+            if handle_type in positions:
+                if self._point_in_handle(pos, positions[handle_type], self.handle_size):
+                    return handle_type
+
+        # Check edge handles
+        for handle_type in [self.HANDLE_T, self.HANDLE_B, self.HANDLE_L, self.HANDLE_R]:
+            if handle_type in positions:
+                if self._point_in_handle(pos, positions[handle_type], self.handle_size):
+                    return handle_type
+
+        # Check if inside bounds (for moving)
+        if self._point_in_rotated_bounds(pos):
+            return self.HANDLE_MOVE
+
+        return self.HANDLE_NONE
+
+    def _point_in_handle(self, point: QPointF, handle_center: QPointF, size: float) -> bool:
+        """Check if a point is within a handle's clickable area."""
+        half_size = size / 2 + 4  # Add padding for easier clicking
+        return (abs(point.x() - handle_center.x()) <= half_size and
+                abs(point.y() - handle_center.y()) <= half_size)
+
+    def _point_in_rotated_bounds(self, point: QPointF) -> bool:
+        """Check if a point is inside the rotated bounding box."""
+        if self.bounds.isEmpty():
+            return False
+
+        # Transform point to un-rotated space
+        center = self.bounds.center()
+        transform = QTransform()
+        transform.translate(center.x(), center.y())
+        transform.rotate(-self.rotation)
+        transform.translate(-center.x(), -center.y())
+
+        unrotated_point = transform.map(point)
+        return self.bounds.contains(unrotated_point)
+
+    def get_cursor_for_handle(self, handle_type: str) -> QCursor:
+        """Get the appropriate cursor for a handle type."""
+        if handle_type == self.HANDLE_ROTATE:
+            return QCursor(Qt.CrossCursor)
+        elif handle_type in [self.HANDLE_TL, self.HANDLE_BR]:
+            return QCursor(Qt.SizeFDiagCursor)
+        elif handle_type in [self.HANDLE_TR, self.HANDLE_BL]:
+            return QCursor(Qt.SizeBDiagCursor)
+        elif handle_type in [self.HANDLE_T, self.HANDLE_B]:
+            return QCursor(Qt.SizeVerCursor)
+        elif handle_type in [self.HANDLE_L, self.HANDLE_R]:
+            return QCursor(Qt.SizeHorCursor)
+        elif handle_type == self.HANDLE_MOVE:
+            return QCursor(Qt.SizeAllCursor)
+        else:
+            return QCursor(Qt.ArrowCursor)
+
+    def paintEvent(self, event):
+        """Draw the transform handles and bounding box."""
+        if not self.handles_visible or self.bounds.isEmpty():
+            return
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing, True)
+
+        center = self.bounds.center()
+
+        # Apply rotation
+        painter.translate(center)
+        painter.rotate(self.rotation)
+        painter.translate(-center)
+
+        # Draw bounding box
+        pen = QPen(self.bounds_color, 2, Qt.DashLine)
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+        painter.drawRect(self.bounds)
+
+        # Reset rotation for handles (they stay axis-aligned visually but positioned correctly)
+        painter.resetTransform()
+
+        positions = self.get_handle_positions()
+
+        # Draw line from top center to rotation handle
+        if self.HANDLE_T in positions and self.HANDLE_ROTATE in positions:
+            pen = QPen(self.rotation_line_color, 2)
+            painter.setPen(pen)
+            painter.drawLine(positions[self.HANDLE_T], positions[self.HANDLE_ROTATE])
+
+        # Draw handles
+        for handle_type, pos in positions.items():
+            if handle_type == self.HANDLE_ROTATE:
+                size = self.rotation_handle_size
+            else:
+                size = self.handle_size
+
+            # Determine color based on state
+            if handle_type == self.active_handle:
+                color = self.handle_active_color
+            elif handle_type == self.hovered_handle:
+                color = self.handle_hover_color
+            else:
+                color = self.handle_color
+
+            painter.setPen(QPen(color.darker(120), 2))
+            painter.setBrush(QBrush(color))
+
+            if handle_type == self.HANDLE_ROTATE:
+                # Draw rotation handle as circle
+                painter.drawEllipse(pos, size / 2, size / 2)
+            else:
+                # Draw scale handles as squares
+                rect = QRectF(pos.x() - size / 2, pos.y() - size / 2, size, size)
+                painter.drawRect(rect)
+
+        painter.end()
+
+    def mousePressEvent(self, event: QMouseEvent):
+        """Start a transform operation."""
+        if event.button() == Qt.LeftButton:
+            pos = QPointF(event.pos())
+            hit = self.hit_test(pos)
+
+            if hit != self.HANDLE_NONE:
+                self.active_handle = hit
+                self.drag_start_pos = pos
+                self.drag_start_bounds = QRectF(self.bounds)
+                self.drag_start_rotation = self.rotation
+                self.transform_started.emit()
+                self.update()
+                event.accept()
+                return
+
+        event.ignore()  # Let parent handle it
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        """Handle dragging or hover state updates."""
+        pos = QPointF(event.pos())
+
+        if self.active_handle != self.HANDLE_NONE:
+            # Currently dragging
+            self._handle_drag(pos)
+            event.accept()
+        else:
+            # Just hovering - update cursor
+            hit = self.hit_test(pos)
+            if hit != self.hovered_handle:
+                self.hovered_handle = hit
+                self.setCursor(self.get_cursor_for_handle(hit))
+                self.update()
+            event.ignore()  # Let parent handle for panning if not on handle
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        """End a transform operation."""
+        if event.button() == Qt.LeftButton and self.active_handle != self.HANDLE_NONE:
+            self.active_handle = self.HANDLE_NONE
+            self.transform_finished.emit()
+            self.update()
+            event.accept()
+        else:
+            event.ignore()
+
+    def _handle_drag(self, current_pos: QPointF):
+        """Process drag movement based on active handle type."""
+        delta = current_pos - self.drag_start_pos
+        center = self.drag_start_bounds.center()
+
+        if self.active_handle == self.HANDLE_ROTATE:
+            # Calculate rotation angle
+            start_angle = math.atan2(
+                self.drag_start_pos.y() - center.y(),
+                self.drag_start_pos.x() - center.x()
+            )
+            current_angle = math.atan2(
+                current_pos.y() - center.y(),
+                current_pos.x() - center.x()
+            )
+            angle_delta = math.degrees(current_angle - start_angle)
+            self.rotation_changed.emit(angle_delta)
+
+        elif self.active_handle == self.HANDLE_MOVE:
+            # Calculate position change as normalized delta
+            widget_size = min(self.width(), self.height())
+            if widget_size > 0:
+                norm_dx = delta.x() / widget_size
+                norm_dy = delta.y() / widget_size
+                self.position_changed.emit(-norm_dx, -norm_dy)
+                # Update drag start for continuous movement
+                self.drag_start_pos = current_pos
+
+        elif self.active_handle in [self.HANDLE_TL, self.HANDLE_TR, self.HANDLE_BL, self.HANDLE_BR]:
+            # Corner handle - uniform or non-uniform scale
+            self._handle_corner_scale(current_pos)
+
+        elif self.active_handle in [self.HANDLE_T, self.HANDLE_B, self.HANDLE_L, self.HANDLE_R]:
+            # Edge handle - single axis scale
+            self._handle_edge_scale(current_pos)
+
+    def _handle_corner_scale(self, current_pos: QPointF):
+        """Handle corner drag for scaling."""
+        center = self.drag_start_bounds.center()
+
+        # Get the fixed corner (opposite to the one being dragged)
+        if self.active_handle == self.HANDLE_TL:
+            fixed = self.drag_start_bounds.bottomRight()
+        elif self.active_handle == self.HANDLE_TR:
+            fixed = self.drag_start_bounds.bottomLeft()
+        elif self.active_handle == self.HANDLE_BL:
+            fixed = self.drag_start_bounds.topRight()
+        else:  # BR
+            fixed = self.drag_start_bounds.topLeft()
+
+        # Calculate original and new distances from fixed point
+        original_dist = math.sqrt(
+            (self.drag_start_pos.x() - fixed.x()) ** 2 +
+            (self.drag_start_pos.y() - fixed.y()) ** 2
+        )
+        current_dist = math.sqrt(
+            (current_pos.x() - fixed.x()) ** 2 +
+            (current_pos.y() - fixed.y()) ** 2
+        )
+
+        if original_dist > 0:
+            scale_factor = current_dist / original_dist
+            self.scale_changed.emit(scale_factor, scale_factor)
+
+    def _handle_edge_scale(self, current_pos: QPointF):
+        """Handle edge drag for single-axis scaling."""
+        center = self.drag_start_bounds.center()
+
+        if self.active_handle in [self.HANDLE_L, self.HANDLE_R]:
+            # Horizontal scaling
+            original_half_width = self.drag_start_bounds.width() / 2
+            if self.active_handle == self.HANDLE_R:
+                new_half_width = current_pos.x() - center.x()
+            else:
+                new_half_width = center.x() - current_pos.x()
+
+            if original_half_width > 0 and new_half_width > 0:
+                scale_x = new_half_width / original_half_width
+                if self.lock_aspect_ratio:
+                    self.scale_changed.emit(scale_x, scale_x)
+                else:
+                    self.scale_changed.emit(scale_x, 1.0)
+
+        else:  # T or B
+            # Vertical scaling
+            original_half_height = self.drag_start_bounds.height() / 2
+            if self.active_handle == self.HANDLE_B:
+                new_half_height = current_pos.y() - center.y()
+            else:
+                new_half_height = center.y() - current_pos.y()
+
+            if original_half_height > 0 and new_half_height > 0:
+                scale_y = new_half_height / original_half_height
+                if self.lock_aspect_ratio:
+                    self.scale_changed.emit(scale_y, scale_y)
+                else:
+                    self.scale_changed.emit(1.0, scale_y)
+
+
+class InteractiveImageView(QGraphicsView):
+    """Interactive image view with transform handles overlay for scaling, rotation, and positioning."""
+
+    # Signals for transform handle interactions
+    scale_changed = Signal(float, float)  # scale_x, scale_y (relative multiplier)
+    rotation_changed = Signal(float)  # rotation delta in degrees
+    position_changed = Signal(float, float)  # delta_x, delta_y (normalized 0-1)
+
+    # Legacy signals (kept for compatibility)
+    position_dragged = Signal(float, float)  # delta_x, delta_y in 0-1 range
+    zoom_changed = Signal(float)  # zoom delta (positive = zoom in, negative = zoom out)
+    arrow_key_pressed = Signal(float, float)  # delta_x, delta_y for fine positioning
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.scene = QGraphicsScene(self)
+        self.setScene(self.scene)
+
+        # Setup view properties
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setBackgroundBrush(Qt.darkGray)
+        self.setFrameShape(QGraphicsView.NoFrame)
+
+        # Enable focus for keyboard events
+        self.setFocusPolicy(Qt.StrongFocus)
+
+        # Image item
+        self.image_item: Optional[QGraphicsPixmapItem] = None
+
+        # Zoom state (view zoom, not source image zoom)
+        self.zoom_factor = 1.0
+        self.min_zoom = 0.1
+        self.max_zoom = 5.0
+
+        # Reference size for drag sensitivity
+        self.arrow_key_step = 0.005  # Fine positioning step for arrow keys
+
+        # Create transform handles overlay (parented to viewport for correct positioning)
+        self.handles_overlay = TransformHandlesOverlay(self.viewport())
+        self.handles_overlay.setGeometry(0, 0, self.viewport().width(), self.viewport().height())
+        self.handles_overlay.show()
+        self.handles_overlay.raise_()
+
+        # Connect overlay signals to our signals
+        self.handles_overlay.scale_changed.connect(self.scale_changed.emit)
+        self.handles_overlay.rotation_changed.connect(self.rotation_changed.emit)
+        self.handles_overlay.position_changed.connect(self.position_changed.emit)
+
+        # Install event filter on viewport to intercept mouse events for handles
+        self.viewport().installEventFilter(self)
+
+    def resizeEvent(self, event):
+        """Resize the handles overlay when the view is resized."""
+        super().resizeEvent(event)
+        self.handles_overlay.setGeometry(0, 0, self.viewport().width(), self.viewport().height())
+        self.handles_overlay.raise_()
+
+    def eventFilter(self, watched, event):
+        """Filter viewport events to handle transform handles."""
+        if watched == self.viewport():
+            if event.type() == event.Type.MouseButtonPress:
+                # Check if click is on a handle
+                pos = QPointF(event.pos())
+                hit = self.handles_overlay.hit_test(pos)
+                if hit != TransformHandlesOverlay.HANDLE_NONE:
+                    # Forward to overlay
+                    self.handles_overlay.mousePressEvent(event)
+                    return True  # Consume the event
+
+            elif event.type() == event.Type.MouseMove:
+                # Check if we're dragging or hovering over a handle
+                pos = QPointF(event.pos())
+                if self.handles_overlay.active_handle != TransformHandlesOverlay.HANDLE_NONE:
+                    # Currently dragging - forward to overlay
+                    self.handles_overlay.mouseMoveEvent(event)
+                    return True
+                else:
+                    # Just hovering - update cursor but don't consume event
+                    hit = self.handles_overlay.hit_test(pos)
+                    if hit != self.handles_overlay.hovered_handle:
+                        self.handles_overlay.hovered_handle = hit
+                        self.handles_overlay.setCursor(self.handles_overlay.get_cursor_for_handle(hit))
+                        self.viewport().setCursor(self.handles_overlay.get_cursor_for_handle(hit))
+                        self.handles_overlay.update()
+
+            elif event.type() == event.Type.MouseButtonRelease:
+                if self.handles_overlay.active_handle != TransformHandlesOverlay.HANDLE_NONE:
+                    self.handles_overlay.mouseReleaseEvent(event)
+                    return True
+
+        return super().eventFilter(watched, event)
+
+    def set_image(self, pixmap: QPixmap):
+        """Set the image to display."""
+        self.scene.clear()
+        self.image_item = QGraphicsPixmapItem(pixmap)
+        self.scene.addItem(self.image_item)
+        self.fitInView(self.image_item, Qt.KeepAspectRatio)
+        self.zoom_factor = 1.0
+
+    def set_transform_bounds(self, bounds: QRectF):
+        """Set the bounding box for transform handles."""
+        self.handles_overlay.set_bounds(bounds)
+
+    def set_transform_rotation(self, rotation: float):
+        """Set the rotation for transform handles."""
+        self.handles_overlay.set_rotation(rotation)
+
+    def set_active_layer(self, layer: str):
+        """Set which layer the handles should affect."""
+        self.handles_overlay.set_active_layer(layer)
+
+    def set_handles_visible(self, visible: bool):
+        """Show or hide the transform handles."""
+        self.handles_overlay.set_handles_visible(visible)
+
+    def set_lock_aspect_ratio(self, locked: bool):
+        """Set whether scaling should maintain aspect ratio."""
+        self.handles_overlay.lock_aspect_ratio = locked
+
+    def wheelEvent(self, event: QWheelEvent):
+        """Handle mouse wheel for zooming the source image (not the view)."""
+        if self.image_item is None:
+            return
+
+        # Get the zoom delta
+        delta = event.angleDelta().y()
+
+        # Emit zoom change signal for parent to handle source image zoom
+        # Positive delta = zoom in, negative = zoom out
+        # Use smaller increments for smoother control
+        zoom_step = 0.05 if delta > 0 else -0.05
+        self.zoom_changed.emit(zoom_step)
+        event.accept()
+
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle arrow keys for fine positioning."""
+        if self.image_item is None:
+            super().keyPressEvent(event)
+            return
+
+        delta_x = 0.0
+        delta_y = 0.0
+
+        if event.key() == Qt.Key_Left:
+            delta_x = self.arrow_key_step
+        elif event.key() == Qt.Key_Right:
+            delta_x = -self.arrow_key_step
+        elif event.key() == Qt.Key_Up:
+            delta_y = self.arrow_key_step
+        elif event.key() == Qt.Key_Down:
+            delta_y = -self.arrow_key_step
+        else:
+            super().keyPressEvent(event)
+            return
+
+        self.arrow_key_pressed.emit(delta_x, delta_y)
+        event.accept()
+
+    def reset_view(self):
+        """Reset zoom and pan to fit the image."""
+        if self.image_item:
+            self.resetTransform()
+            self.fitInView(self.image_item, Qt.KeepAspectRatio)
+            self.zoom_factor = 1.0
+
+
+class CustomImageTab(QWidget):
+    """Tab for uploading custom images and applying platform borders with layer support."""
+
+    def __init__(self):
+        super().__init__()
+
+        # Layer state - background (game art) and logo overlay
+        self.background_image: Optional[Image.Image] = None  # Background layer (game art)
+        self.logo_image: Optional[Image.Image] = None  # Logo overlay layer (transparent)
+
+        # Legacy support - original_image now refers to the composite
+        self.original_image: Optional[Image.Image] = None
+        self.current_platform: Optional[str] = None
+        self.current_border: Optional[Path] = None
+
+        # Background layer transformations (no longer limited by sliders)
+        self.rotation: float = 0.0  # Now supports float for smooth rotation
+        self.zoom: float = 1.0  # No upper/lower limits
+        self.offset_x: float = 0.5  # Center by default (0-1 range)
+        self.offset_y: float = 0.5
+
+        # Logo layer transformations (no longer limited by sliders)
+        self.logo_scale: float = 0.5  # Logo scale relative to canvas
+        self.logo_offset_x: float = 0.5  # Logo horizontal position (0-1)
+        self.logo_offset_y: float = 0.5  # Logo vertical position (0-1)
+        self.logo_opacity: float = 1.0  # Logo opacity (0-1)
+
+        # Active layer for transform handles
+        self.active_layer: str = 'background'  # 'background' or 'logo'
+
+        # Transform handle interaction state
+        self.transform_start_zoom: float = 1.0
+        self.transform_start_rotation: float = 0.0
+        self.transform_start_logo_scale: float = 0.5
+
+        # Performance optimization: cache the preview size version
+        self.preview_cache: Optional[Image.Image] = None
+        self.preview_size = 512  # Lower resolution for interactive preview
+
+        # Cache border images and masks to avoid reloading
+        self.border_cache: Optional[Image.Image] = None  # Border at preview size
+        self.border_mask_cache: Optional[Image.Image] = None  # Mask at preview size
+        self.border_cache_full: Optional[Image.Image] = None  # Border at 1024x1024
+        self.border_mask_cache_full: Optional[Image.Image] = None  # Mask at 1024x1024
+
+        # Config
+        self.config_path = get_config_path()
+        self.platforms_config = {}
+        self.borders_dir = get_borders_dir()
+
+        # Debounce timer for slider updates
+        self.update_timer = QTimer()
+        self.update_timer.setSingleShot(True)
+        self.update_timer.timeout.connect(self._do_update_preview)
+        self.debounce_ms = 50  # Reduced to 50ms for better responsiveness
+
+        self._load_config()
+        self._setup_ui()
+
+        # Initialize layer selection after UI is set up
+        self._select_layer('background')
+
+    def _load_config(self):
+        """Load platform configuration."""
+        if self.config_path.exists():
+            cfg = load_yaml(self.config_path)
+            self.platforms_config = cfg.get("platforms", {})
+            paths = cfg.get("paths", {})
+            borders_dir_str = paths.get("borders_dir", "./borders")
+            self.borders_dir = (self.config_path.parent / borders_dir_str).resolve()
+
+    def _setup_ui(self):
+        """Setup the user interface."""
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
+
+        # Left panel - Controls (use scroll area for many controls)
+        from PySide6.QtWidgets import QScrollArea
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setMinimumWidth(280)
+        scroll_area.setMaximumWidth(320)
+
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setSpacing(8)
+        left_layout.setContentsMargins(5, 5, 5, 5)
+
+        # Background Layer section (game art)
+        bg_group = QGroupBox("Background Layer (Game Art)")
+        bg_layout = QVBoxLayout(bg_group)
+        bg_layout.setSpacing(6)
+        bg_layout.setContentsMargins(8, 12, 8, 8)
+
+        self.bg_upload_btn = QPushButton("Upload Background")
+        self.bg_upload_btn.setMinimumHeight(32)
+        self.bg_upload_btn.clicked.connect(self._upload_background)
+        bg_layout.addWidget(self.bg_upload_btn)
+
+        self.bg_info = QLabel("No background loaded")
+        self.bg_info.setStyleSheet("font-size: 10px; color: #888;")
+        self.bg_info.setWordWrap(True)
+        bg_layout.addWidget(self.bg_info)
+
+        self.bg_clear_btn = QPushButton("Clear")
+        self.bg_clear_btn.setMinimumHeight(28)
+        self.bg_clear_btn.clicked.connect(self._clear_background)
+        self.bg_clear_btn.setEnabled(False)
+        bg_layout.addWidget(self.bg_clear_btn)
+
+        left_layout.addWidget(bg_group)
+
+        # Logo Layer section (transparent overlay)
+        logo_group = QGroupBox("Logo Layer (Overlay)")
+        logo_layout = QVBoxLayout(logo_group)
+        logo_layout.setSpacing(6)
+        logo_layout.setContentsMargins(8, 12, 8, 8)
+
+        self.logo_upload_btn = QPushButton("Upload Logo")
+        self.logo_upload_btn.setMinimumHeight(32)
+        self.logo_upload_btn.clicked.connect(self._upload_logo)
+        logo_layout.addWidget(self.logo_upload_btn)
+
+        self.logo_info = QLabel("No logo loaded (optional)")
+        self.logo_info.setStyleSheet("font-size: 10px; color: #888;")
+        self.logo_info.setWordWrap(True)
+        logo_layout.addWidget(self.logo_info)
+
+        self.logo_clear_btn = QPushButton("Clear")
+        self.logo_clear_btn.setMinimumHeight(28)
+        self.logo_clear_btn.clicked.connect(self._clear_logo)
+        self.logo_clear_btn.setEnabled(False)
+        logo_layout.addWidget(self.logo_clear_btn)
+
+        left_layout.addWidget(logo_group)
+
+        # Platform selection section
+        platform_group = QGroupBox("Platform & Border")
+        platform_layout = QVBoxLayout(platform_group)
+        platform_layout.setSpacing(6)
+        platform_layout.setContentsMargins(8, 12, 8, 8)
+
+        platform_lbl = QLabel("Select Platform:")
+        platform_lbl.setStyleSheet("font-size: 11px;")
+        platform_layout.addWidget(platform_lbl)
+
+        self.platform_combo = QComboBox()
+        self.platform_combo.setMinimumHeight(28)
+        self.platform_combo.addItem("Select Platform...", None)
+
+        # Populate platforms
+        for platform_key, platform_data in sorted(self.platforms_config.items()):
+            border_file = platform_data.get("border_file")
+            if border_file:
+                display_name = platform_key.replace("_", " ").title()
+                self.platform_combo.addItem(display_name, platform_key)
+
+        self.platform_combo.currentIndexChanged.connect(self._on_platform_changed)
+        platform_layout.addWidget(self.platform_combo)
+
+        self.border_info = QLabel("No border selected")
+        self.border_info.setStyleSheet("font-size: 10px; color: #888;")
+        self.border_info.setWordWrap(True)
+        platform_layout.addWidget(self.border_info)
+
+        # Custom border import button
+        custom_border_btn = QPushButton("Import Custom Border")
+        custom_border_btn.setMinimumHeight(28)
+        custom_border_btn.clicked.connect(self._import_custom_border)
+        platform_layout.addWidget(custom_border_btn)
+
+        left_layout.addWidget(platform_group)
+
+        # Transform Controls section (replaces old slider-based adjustments)
+        transform_group = QGroupBox("Transform Controls")
+        transform_layout = QVBoxLayout(transform_group)
+        transform_layout.setSpacing(6)
+        transform_layout.setContentsMargins(8, 12, 8, 8)
+
+        # Layer selection buttons
+        layer_row = QHBoxLayout()
+        layer_row.setSpacing(4)
+        self.bg_layer_btn = QPushButton("Background")
+        self.bg_layer_btn.setCheckable(True)
+        self.bg_layer_btn.setChecked(True)
+        self.bg_layer_btn.setMinimumHeight(28)
+        self.bg_layer_btn.clicked.connect(lambda: self._select_layer('background'))
+        layer_row.addWidget(self.bg_layer_btn)
+
+        self.logo_layer_btn = QPushButton("Logo")
+        self.logo_layer_btn.setCheckable(True)
+        self.logo_layer_btn.setMinimumHeight(28)
+        self.logo_layer_btn.clicked.connect(lambda: self._select_layer('logo'))
+        layer_row.addWidget(self.logo_layer_btn)
+        transform_layout.addLayout(layer_row)
+
+        # Transform info display
+        info_style = "font-size: 11px; padding: 2px;"
+        value_style = "font-size: 11px; font-weight: bold; color: #0078d7;"
+
+        # Scale/Zoom spinbox (editable)
+        scale_row = QHBoxLayout()
+        scale_row.setSpacing(8)
+        scale_lbl = QLabel("Scale:")
+        scale_lbl.setStyleSheet(info_style)
+        scale_lbl.setMinimumWidth(55)
+        scale_row.addWidget(scale_lbl)
+        self.scale_spinbox = QDoubleSpinBox()
+        self.scale_spinbox.setRange(1, 1000)  # 1% to 1000%
+        self.scale_spinbox.setValue(100)
+        self.scale_spinbox.setSuffix("%")
+        self.scale_spinbox.setDecimals(0)
+        self.scale_spinbox.setSingleStep(5)
+        self.scale_spinbox.setMinimumWidth(80)
+        self.scale_spinbox.valueChanged.connect(self._on_scale_spinbox_changed)
+        scale_row.addWidget(self.scale_spinbox)
+        scale_row.addStretch()
+        transform_layout.addLayout(scale_row)
+
+        # Rotation display
+        rotation_row = QHBoxLayout()
+        rotation_row.setSpacing(8)
+        rotation_lbl = QLabel("Rotation:")
+        rotation_lbl.setStyleSheet(info_style)
+        rotation_lbl.setMinimumWidth(55)
+        rotation_row.addWidget(rotation_lbl)
+        self.rotation_value_label = QLabel("0.0°")
+        self.rotation_value_label.setStyleSheet(value_style)
+        rotation_row.addWidget(self.rotation_value_label, 1)
+        transform_layout.addLayout(rotation_row)
+
+        # Position display
+        position_row = QHBoxLayout()
+        position_row.setSpacing(8)
+        position_lbl = QLabel("Position:")
+        position_lbl.setStyleSheet(info_style)
+        position_lbl.setMinimumWidth(55)
+        position_row.addWidget(position_lbl)
+        self.position_value_label = QLabel("(50%, 50%)")
+        self.position_value_label.setStyleSheet(value_style)
+        position_row.addWidget(self.position_value_label, 1)
+        transform_layout.addLayout(position_row)
+
+        # Lock aspect ratio checkbox
+        self.lock_aspect_cb = QCheckBox("Lock Aspect Ratio")
+        self.lock_aspect_cb.setChecked(True)
+        self.lock_aspect_cb.setStyleSheet("font-size: 11px;")
+        self.lock_aspect_cb.stateChanged.connect(self._on_lock_aspect_changed)
+        transform_layout.addWidget(self.lock_aspect_cb)
+
+        # Help text
+        help_text = QLabel("Drag handles to transform\nCorners: Scale | Edges: Resize\nTop circle: Rotate | Inside: Move")
+        help_text.setStyleSheet("font-size: 9px; color: #666;")
+        help_text.setWordWrap(True)
+        transform_layout.addWidget(help_text)
+
+        # Reset button
+        self.reset_transform_btn = QPushButton("Reset Transform")
+        self.reset_transform_btn.setMinimumHeight(28)
+        self.reset_transform_btn.clicked.connect(self._reset_current_layer)
+        transform_layout.addWidget(self.reset_transform_btn)
+
+        left_layout.addWidget(transform_group)
+
+        # Logo Opacity section (kept separate since no visual handle for opacity)
+        opacity_group = QGroupBox("Logo Opacity")
+        opacity_layout = QVBoxLayout(opacity_group)
+        opacity_layout.setSpacing(4)
+        opacity_layout.setContentsMargins(8, 12, 8, 8)
+
+        from PySide6.QtWidgets import QSlider
+        opacity_row = QHBoxLayout()
+        opacity_row.setSpacing(8)
+        opacity_lbl = QLabel("Opacity:")
+        opacity_lbl.setStyleSheet("font-size: 11px;")
+        opacity_lbl.setMinimumWidth(55)
+        opacity_row.addWidget(opacity_lbl)
+        self.logo_opacity_slider = QSlider(Qt.Horizontal)
+        self.logo_opacity_slider.setMinimum(0)
+        self.logo_opacity_slider.setMaximum(100)
+        self.logo_opacity_slider.setValue(100)
+        self.logo_opacity_slider.valueChanged.connect(self._on_logo_opacity_changed)
+        opacity_row.addWidget(self.logo_opacity_slider, 1)
+        self.logo_opacity_label = QLabel("100%")
+        self.logo_opacity_label.setStyleSheet("font-size: 11px;")
+        self.logo_opacity_label.setMinimumWidth(35)
+        self.logo_opacity_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        opacity_row.addWidget(self.logo_opacity_label)
+        opacity_layout.addLayout(opacity_row)
+
+        left_layout.addWidget(opacity_group)
+
+        # Export section
+        export_group = QGroupBox("Export")
+        export_layout = QVBoxLayout(export_group)
+        export_layout.setSpacing(6)
+        export_layout.setContentsMargins(8, 12, 8, 8)
+
+        self.export_btn = QPushButton("Export Image (1024x1024)")
+        self.export_btn.setMinimumHeight(36)
+        self.export_btn.clicked.connect(self._export_image)
+        self.export_btn.setEnabled(False)
+        export_layout.addWidget(self.export_btn)
+
+        self.export_info = QLabel("Upload an image and select a platform to export")
+        self.export_info.setStyleSheet("font-size: 10px; color: #888;")
+        self.export_info.setWordWrap(True)
+        export_layout.addWidget(self.export_info)
+
+        left_layout.addWidget(export_group)
+
+        left_layout.addStretch()
+
+        # Set scroll area widget
+        scroll_area.setWidget(left_panel)
+
+        # Right panel - Preview
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(10, 5, 10, 10)
+        right_layout.setSpacing(8)
+
+        preview_label = QLabel("Preview")
+        preview_label.setStyleSheet("font-size: 14px; font-weight: bold;")
+        right_layout.addWidget(preview_label)
+
+        # Preview container to properly center and size the preview
+        preview_container = QWidget()
+        preview_container_layout = QVBoxLayout(preview_container)
+        preview_container_layout.setContentsMargins(0, 0, 0, 0)
+        preview_container_layout.setAlignment(Qt.AlignCenter)
+
+        self.preview_view = InteractiveImageView()
+        self.preview_view.setMinimumSize(400, 400)
+        self.preview_view.setMaximumSize(800, 800)
+        self.preview_view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        preview_container_layout.addWidget(self.preview_view, 0, Qt.AlignCenter)
+
+        right_layout.addWidget(preview_container, 1)
+
+        preview_help = QLabel("Scroll to zoom | Arrow keys for fine adjust")
+        preview_help.setStyleSheet("font-size: 10px; color: #666;")
+        preview_help.setAlignment(Qt.AlignCenter)
+        right_layout.addWidget(preview_help)
+
+        # Connect transform handle signals
+        self.preview_view.scale_changed.connect(self._on_handle_scale)
+        self.preview_view.rotation_changed.connect(self._on_handle_rotation)
+        self.preview_view.position_changed.connect(self._on_handle_position)
+
+        # Connect transform lifecycle signals for tracking start values
+        self.preview_view.handles_overlay.transform_started.connect(self._on_transform_started)
+
+        # Connect preview zoom signal (scroll wheel)
+        self.preview_view.zoom_changed.connect(self._on_wheel_zoom)
+
+        # Connect arrow key signal for fine positioning
+        self.preview_view.arrow_key_pressed.connect(lambda dx, dy: self._on_handle_position(dx, dy))
+
+        # Add panels to main layout - use scroll area for left panel
+        layout.addWidget(scroll_area, 0)
+        layout.addWidget(right_panel, 1)
+
+        # Enable keyboard focus for arrow keys
+        self.setFocusPolicy(Qt.StrongFocus)
+
+    def _upload_background(self):
+        """Open file dialog to upload background layer (game art)."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Upload Background (Game Art)",
+            "",
+            "Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp);;All Files (*)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            # Load image
+            loaded_image = Image.open(file_path).convert("RGBA")
+
+            # Place image on a 1024x1024 transparent canvas, centered
+            canvas = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+            img_w, img_h = loaded_image.size
+
+            # Center the loaded image on the canvas
+            paste_x = (1024 - img_w) // 2
+            paste_y = (1024 - img_h) // 2
+            canvas.paste(loaded_image, (paste_x, paste_y), loaded_image)
+
+            self.background_image = canvas
+            self._update_composite_image()
+
+            # Clear cache
+            self.preview_cache = None
+
+            # Update info
+            size_mb = Path(file_path).stat().st_size / (1024 * 1024)
+            self.bg_info.setText(
+                f"Loaded: {Path(file_path).name}\n"
+                f"Original: {img_w}x{img_h} ({size_mb:.2f} MB)"
+            )
+            self.bg_clear_btn.setEnabled(True)
+
+            # Reset background adjustments
+            self._reset_background_adjustments()
+
+            # Select background layer and update handles
+            self._select_layer('background')
+
+            # Update preview
+            self._schedule_update()
+
+            # Enable export if border is also selected
+            self._check_export_ready()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load background:\n{e}")
+
+    def _upload_logo(self):
+        """Open file dialog to upload logo overlay layer."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Upload Logo (Transparent PNG recommended)",
+            "",
+            "Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp);;All Files (*)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            # Load logo image - keep original size for scaling
+            self.logo_image = Image.open(file_path).convert("RGBA")
+
+            # Update composite
+            self._update_composite_image()
+
+            # Clear cache
+            self.preview_cache = None
+
+            # Update info
+            img_w, img_h = self.logo_image.size
+            size_mb = Path(file_path).stat().st_size / (1024 * 1024)
+            self.logo_info.setText(
+                f"Loaded: {Path(file_path).name}\n"
+                f"Size: {img_w}x{img_h} ({size_mb:.2f} MB)"
+            )
+            self.logo_clear_btn.setEnabled(True)
+
+            # Update preview
+            self._schedule_update()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load logo:\n{e}")
+
+    def _clear_background(self):
+        """Clear the background layer."""
+        self.background_image = None
+        self._update_composite_image()
+        self.preview_cache = None
+        self.bg_info.setText("No background loaded")
+        self.bg_clear_btn.setEnabled(False)
+        self._schedule_update()
+        self._check_export_ready()
+
+    def _clear_logo(self):
+        """Clear the logo layer."""
+        self.logo_image = None
+        self._update_composite_image()
+        self.preview_cache = None
+        self.logo_info.setText("No logo loaded (optional)")
+        self.logo_clear_btn.setEnabled(False)
+        self._schedule_update()
+
+    def _update_composite_image(self):
+        """Update the composite original_image from layers for backward compatibility."""
+        # If we have a background, use it as the base
+        if self.background_image is not None:
+            self.original_image = self.background_image.copy()
+        else:
+            self.original_image = None
+
+    def _on_platform_changed(self, index: int):
+        """Handle platform selection change."""
+        platform_key = self.platform_combo.itemData(index)
+
+        if platform_key is None:
+            self.current_platform = None
+            self.current_border = None
+            self.border_info.setText("No border selected")
+            self._check_export_ready()
+            return
+
+        self.current_platform = platform_key
+        platform_data = self.platforms_config.get(platform_key, {})
+        border_file = platform_data.get("border_file")
+
+        if border_file:
+            self.current_border = self.borders_dir / border_file
+
+            if self.current_border.exists():
+                self.border_info.setText(f"Border: {border_file}")
+                # Clear border caches when platform changes
+                self.border_cache = None
+                self.border_mask_cache = None
+                self.border_cache_full = None
+                self.border_mask_cache_full = None
+                self._schedule_update()
+            else:
+                self.border_info.setText(f"Border file not found: {border_file}")
+                self.current_border = None
+        else:
+            self.current_border = None
+            self.border_info.setText("No border file configured")
+
+        self._check_export_ready()
+
+    def _import_custom_border(self):
+        """Import a custom border image."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import Custom Border",
+            "",
+            "Images (*.png *.jpg *.jpeg *.bmp);;All Files (*)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            # Load and validate border image
+            border_img = Image.open(file_path).convert("RGBA")
+
+            # Check if it's 1024x1024
+            if border_img.size != (1024, 1024):
+                reply = QMessageBox.question(
+                    self,
+                    "Resize Border?",
+                    f"Border is {border_img.size[0]}x{border_img.size[1]}. Resize to 1024x1024?",
+                    QMessageBox.Yes | QMessageBox.No
+                )
+
+                if reply == QMessageBox.Yes:
+                    border_img = border_img.resize((1024, 1024), Image.LANCZOS)
+                else:
+                    return
+
+            # Save to a temporary location or use directly
+            self.current_border = Path(file_path)
+            self.current_platform = "custom"
+
+            # Clear platform combo selection
+            self.platform_combo.setCurrentIndex(0)
+
+            # Clear border caches
+            self.border_cache = None
+            self.border_mask_cache = None
+            self.border_cache_full = None
+            self.border_mask_cache_full = None
+
+            self.border_info.setText(f"Custom border: {Path(file_path).name}")
+            self._schedule_update()
+            self._check_export_ready()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load border:\n{e}")
+
+    def _select_layer(self, layer: str):
+        """Select which layer to transform."""
+        self.active_layer = layer
+
+        # Update button states
+        self.bg_layer_btn.setChecked(layer == 'background')
+        self.logo_layer_btn.setChecked(layer == 'logo')
+
+        # Update preview handles
+        self.preview_view.set_active_layer(layer)
+
+        # Update info display for selected layer
+        self._update_transform_info()
+
+        # Update handles bounds
+        self._update_handle_bounds()
+
+    def _on_lock_aspect_changed(self, state: int):
+        """Handle lock aspect ratio checkbox change."""
+        self.preview_view.set_lock_aspect_ratio(state == Qt.Checked)
+
+    def _on_transform_started(self):
+        """Called when user starts dragging a transform handle."""
+        # Store starting values for relative transforms
+        self.transform_start_zoom = self.zoom
+        self.transform_start_rotation = self.rotation
+        self.transform_start_logo_scale = self.logo_scale
+
+    def _on_handle_scale(self, scale_x: float, scale_y: float):
+        """Handle scale change from transform handles."""
+        if self.active_layer == 'background':
+            # Apply scale as multiplier to zoom
+            new_zoom = self.transform_start_zoom * scale_x
+            new_zoom = max(0.1, min(10.0, new_zoom))  # Allow wider range than before
+            self.zoom = new_zoom
+        else:
+            # Logo layer
+            new_scale = self.transform_start_logo_scale * scale_x
+            new_scale = max(0.05, min(2.0, new_scale))  # Allow up to 200% for logo
+            self.logo_scale = new_scale
+
+        self.preview_cache = None
+        self._update_transform_info()
+        self._do_update_preview()
+
+    def _on_handle_rotation(self, angle_delta: float):
+        """Handle rotation change from transform handles."""
+        if self.active_layer == 'background':
+            new_rotation = self.transform_start_rotation + angle_delta
+            # Normalize to -180 to 180 range
+            while new_rotation > 180:
+                new_rotation -= 360
+            while new_rotation < -180:
+                new_rotation += 360
+            self.rotation = new_rotation
+            self.preview_cache = None
+            self._update_transform_info()
+            self._do_update_preview()
+        # Logo doesn't have rotation in this implementation
+
+    def _on_handle_position(self, delta_x: float, delta_y: float):
+        """Handle position change from transform handles or arrow keys."""
+        if self.active_layer == 'background':
+            # When zoom < 1.0, the image is smaller than the canvas, so we need to
+            # invert the direction to make dragging feel natural (drag image directly
+            # rather than panning a viewport)
+            if self.zoom < 1.0:
+                delta_x = -delta_x
+                delta_y = -delta_y
+            self.offset_x = max(0.0, min(1.0, self.offset_x + delta_x))
+            self.offset_y = max(0.0, min(1.0, self.offset_y + delta_y))
+        else:
+            # Logo positioning is direct (not viewport-style), so no inversion needed
+            # But we invert to match the drag direction expectation
+            self.logo_offset_x = max(0.0, min(1.0, self.logo_offset_x - delta_x))
+            self.logo_offset_y = max(0.0, min(1.0, self.logo_offset_y - delta_y))
+
+        self._update_transform_info()
+        self._do_update_preview()
+
+    def _on_wheel_zoom(self, zoom_delta: float):
+        """Handle mouse wheel zoom for source image."""
+        if self.active_layer == 'background':
+            new_zoom = self.zoom + zoom_delta
+            new_zoom = max(0.1, min(10.0, new_zoom))  # Wider range than before
+            self.zoom = new_zoom
+        else:
+            new_scale = self.logo_scale + zoom_delta
+            new_scale = max(0.05, min(2.0, new_scale))
+            self.logo_scale = new_scale
+
+        self.preview_cache = None
+        self._update_transform_info()
+        self._do_update_preview()
+
+    def _on_logo_opacity_changed(self, value: int):
+        """Handle logo opacity slider change."""
+        self.logo_opacity = value / 100.0
+        self.logo_opacity_label.setText(f"{value}%")
+        self.preview_cache = None
+        self._schedule_update()
+
+    def _on_scale_spinbox_changed(self, value: float):
+        """Handle scale spinbox value change."""
+        if self.active_layer == 'background':
+            self.zoom = value / 100.0
+        else:
+            self.logo_scale = value / 100.0
+        self.preview_cache = None
+        self._update_handle_bounds()
+        self._do_update_preview()
+
+    def _update_transform_info(self):
+        """Update the transform info display labels and spinbox."""
+        # Block signals to prevent feedback loop when updating spinbox
+        self.scale_spinbox.blockSignals(True)
+        if self.active_layer == 'background':
+            self.scale_spinbox.setValue(self.zoom * 100)
+            self.rotation_value_label.setText(f"{self.rotation:.1f}°")
+            self.position_value_label.setText(f"({self.offset_x * 100:.0f}%, {self.offset_y * 100:.0f}%)")
+        else:
+            self.scale_spinbox.setValue(self.logo_scale * 100)
+            self.rotation_value_label.setText("N/A")  # Logo doesn't rotate
+            self.position_value_label.setText(f"({self.logo_offset_x * 100:.0f}%, {self.logo_offset_y * 100:.0f}%)")
+        self.scale_spinbox.blockSignals(False)
+
+    def _update_handle_bounds(self):
+        """Update the transform handle bounds based on current layer state."""
+        if not hasattr(self, 'preview_view'):
+            return
+
+        # Get viewport dimensions
+        viewport = self.preview_view.viewport()
+        view_w = viewport.width()
+        view_h = viewport.height()
+
+        if view_w <= 0 or view_h <= 0:
+            return
+
+        # Calculate the preview image area within the viewport
+        # The preview is fitted to the view, so we need to find the actual image rect
+        preview_size = min(view_w, view_h)  # Square preview
+        margin_x = (view_w - preview_size) / 2
+        margin_y = (view_h - preview_size) / 2
+
+        if self.active_layer == 'background' and self.background_image is not None:
+            # Calculate background bounds
+            # The background fills the canvas, so the bounding box is the whole preview area
+            # adjusted by zoom
+            bounds_size = preview_size * self.zoom
+            center_x = view_w / 2
+            center_y = view_h / 2
+
+            # Adjust center based on offset
+            offset_shift_x = (self.offset_x - 0.5) * (bounds_size - preview_size)
+            offset_shift_y = (self.offset_y - 0.5) * (bounds_size - preview_size)
+
+            bounds = QRectF(
+                center_x - bounds_size / 2 - offset_shift_x,
+                center_y - bounds_size / 2 - offset_shift_y,
+                bounds_size,
+                bounds_size
+            )
+
+            self.preview_view.set_transform_bounds(bounds)
+            self.preview_view.set_transform_rotation(self.rotation)
+            self.preview_view.set_handles_visible(True)
+
+        elif self.active_layer == 'logo' and self.logo_image is not None:
+            # Calculate logo bounds
+            logo_w, logo_h = self.logo_image.size
+            # Scale logo to fit within logo_scale * preview_size while maintaining aspect ratio
+            max_logo_dim = preview_size * self.logo_scale
+            scale_ratio = min(max_logo_dim / logo_w, max_logo_dim / logo_h)
+            scaled_w = logo_w * scale_ratio
+            scaled_h = logo_h * scale_ratio
+
+            # Position based on offset
+            max_x = preview_size - scaled_w
+            max_y = preview_size - scaled_h
+            pos_x = margin_x + max_x * self.logo_offset_x
+            pos_y = margin_y + max_y * self.logo_offset_y
+
+            bounds = QRectF(pos_x, pos_y, scaled_w, scaled_h)
+
+            self.preview_view.set_transform_bounds(bounds)
+            self.preview_view.set_transform_rotation(0)  # Logo doesn't rotate
+            self.preview_view.set_handles_visible(True)
+        else:
+            # No valid layer, hide handles
+            self.preview_view.set_handles_visible(False)
+
+    def _reset_current_layer(self):
+        """Reset the currently selected layer's transform."""
+        if self.active_layer == 'background':
+            self._reset_background_adjustments()
+        else:
+            self._reset_logo_adjustments()
+
+    def _reset_background_adjustments(self):
+        """Reset background layer adjustments to defaults."""
+        self.rotation = 0.0
+        self.zoom = 1.0
+        self.offset_x = 0.5
+        self.offset_y = 0.5
+        self.preview_cache = None
+        self._update_transform_info()
+        self._update_handle_bounds()
+        self._schedule_update()
+
+    def _reset_logo_adjustments(self):
+        """Reset logo layer adjustments to defaults."""
+        self.logo_scale = 0.5
+        self.logo_offset_x = 0.5
+        self.logo_offset_y = 0.5
+        self.logo_opacity = 1.0
+        self.logo_opacity_slider.setValue(100)
+        self.preview_cache = None
+        self._update_transform_info()
+        self._update_handle_bounds()
+        self._schedule_update()
+
+    def _reset_adjustments(self):
+        """Reset all adjustments to default (both layers)."""
+        self._reset_background_adjustments()
+        self._reset_logo_adjustments()
+
+    def _schedule_update(self):
+        """Schedule a preview update with debouncing."""
+        # Restart the timer - only updates after user stops adjusting
+        self.update_timer.stop()
+        self.update_timer.start(self.debounce_ms)
+
+    def _apply_transformations(self, img: Image.Image, use_high_quality: bool = False) -> Image.Image:
+        """Apply rotation and zoom transformations to the image."""
+        resample_method = Image.LANCZOS if use_high_quality else Image.BILINEAR
+
+        # Apply rotation
+        if self.rotation != 0:
+            img = img.rotate(-self.rotation, expand=True, fillcolor=(0, 0, 0, 0), resample=resample_method)
+
+        # Apply zoom by scaling
+        if self.zoom != 1.0:
+            w, h = img.size
+            new_w = int(w * self.zoom)
+            new_h = int(h * self.zoom)
+            img = img.resize((new_w, new_h), resample_method)
+
+        return img
+
+    def _compose_preview_unconstrained(self, transformed_img: Image.Image, border_path: Path,
+                                       out_size: int, centering: Tuple[float, float]) -> Image.Image:
+        """
+        Compose preview with border overlay WITHOUT cropping the transformed image.
+        Allows image to expand beyond border boundaries.
+        """
+        # Create canvas at output size with transparency
+        canvas = Image.new("RGBA", (out_size, out_size), (0, 0, 0, 0))
+
+        # Scale the transformed image to match preview size vs export size (1024)
+        # This ensures preview and export look the same
+        scale_factor = out_size / 1024.0
+        if scale_factor != 1.0:
+            scaled_w = int(transformed_img.size[0] * scale_factor)
+            scaled_h = int(transformed_img.size[1] * scale_factor)
+            transformed_img = transformed_img.resize((scaled_w, scaled_h), Image.BILINEAR)
+
+        # Get transformed image size (after scaling for preview)
+        img_w, img_h = transformed_img.size
+
+        # Calculate position based on centering (offset_x, offset_y are 0-1 range)
+        # The offset controls which part of the image is visible through the border viewport
+        # centering=(0.5, 0.5) centers the image
+        # centering=(0, 0) shows the left/top of the image
+        # centering=(1, 1) shows the right/bottom of the image
+        cx, cy = centering
+
+        # Invert the offset for viewport panning behavior:
+        # - High horizontal % (0.9) should show the RIGHT side of the image (negative paste_x to shift image left)
+        # - Low horizontal % (0.1) should show the LEFT side of the image (less negative or positive paste_x)
+        # Formula: paste_x = -(img_w - out_size) * cx
+        # Which simplifies to: paste_x = (out_size - img_w) * (1 - cx) when thinking about viewport
+        # Actually, let's use: paste_x = -(img_w - out_size) * cx = out_size - img_w - (img_w - out_size) * cx
+
+        # Simpler: invert cx and cy for viewport-style panning
+        paste_x = -int((img_w - out_size) * cx)
+        paste_y = -int((img_h - out_size) * cy)
+
+        # Paste the transformed image onto the canvas
+        canvas.paste(transformed_img, (paste_x, paste_y), transformed_img)
+
+        # Load and prepare border (use cache for performance)
+        if out_size == self.preview_size:
+            # Preview size - use preview cache
+            if self.border_cache is None:
+                border = Image.open(border_path)
+                border = ImageOps.exif_transpose(border).convert("RGBA")
+                if border.size != (out_size, out_size):
+                    border = border.resize((out_size, out_size), Image.BILINEAR)
+                self.border_cache = border
+                self.border_mask_cache = corner_mask_from_border(border, threshold=18, shrink_px=8, feather=0.8)
+
+            border = self.border_cache
+            mask = self.border_mask_cache
+        else:
+            # Full size - use full cache
+            if self.border_cache_full is None:
+                border = Image.open(border_path)
+                border = ImageOps.exif_transpose(border).convert("RGBA")
+                if border.size != (out_size, out_size):
+                    border = border.resize((out_size, out_size), Image.LANCZOS)
+                self.border_cache_full = border
+                self.border_mask_cache_full = corner_mask_from_border(border, threshold=18, shrink_px=8, feather=0.8)
+
+            border = self.border_cache_full
+            mask = self.border_mask_cache_full
+
+        # Apply border mask to canvas
+        canvas.putalpha(ImageChops.multiply(canvas.split()[-1], mask))
+
+        # Composite border on top
+        result = Image.alpha_composite(canvas, border)
+
+        return result
+
+    def _composite_logo_on_canvas(self, canvas: Image.Image, canvas_size: int,
+                                    use_high_quality: bool = False) -> Image.Image:
+        """Composite the logo layer onto a canvas at the specified position and scale."""
+        if self.logo_image is None:
+            return canvas
+
+        resample_method = Image.LANCZOS if use_high_quality else Image.BILINEAR
+
+        # Calculate logo size based on scale (relative to canvas)
+        logo_w, logo_h = self.logo_image.size
+        # Maintain aspect ratio - scale to fit within logo_scale * canvas_size
+        max_logo_size = int(canvas_size * self.logo_scale)
+        scale_ratio = min(max_logo_size / logo_w, max_logo_size / logo_h)
+        new_logo_w = int(logo_w * scale_ratio)
+        new_logo_h = int(logo_h * scale_ratio)
+
+        # Resize logo
+        scaled_logo = self.logo_image.resize((new_logo_w, new_logo_h), resample_method)
+
+        # Apply opacity if not full
+        if self.logo_opacity < 1.0:
+            # Create a copy and modify alpha
+            r, g, b, a = scaled_logo.split()
+            a = a.point(lambda x: int(x * self.logo_opacity))
+            scaled_logo = Image.merge("RGBA", (r, g, b, a))
+
+        # Calculate position based on offset (0-1 range)
+        # At 0.5, logo is centered. At 0, logo is at left/top edge. At 1, logo is at right/bottom edge.
+        max_x = canvas_size - new_logo_w
+        max_y = canvas_size - new_logo_h
+        paste_x = int(max_x * self.logo_offset_x)
+        paste_y = int(max_y * self.logo_offset_y)
+
+        # Composite logo onto canvas
+        canvas.paste(scaled_logo, (paste_x, paste_y), scaled_logo)
+
+        return canvas
+
+    def _do_update_preview(self):
+        """Actually update the preview (called by debounce timer)."""
+        # Need at least background or logo to show preview
+        if self.background_image is None and self.logo_image is None:
+            return
+
+        try:
+            # Use centering based on offset sliders (for background)
+            centering = (self.offset_x, self.offset_y)
+
+            # Start with a transparent canvas at preview size
+            result_canvas = Image.new("RGBA", (self.preview_size, self.preview_size), (0, 0, 0, 0))
+
+            # Layer 1: Background (with transformations)
+            if self.background_image is not None:
+                # Apply transformations to background
+                transformed_bg = self._apply_transformations(self.background_image.copy())
+
+                # Scale for preview
+                scale_factor = self.preview_size / 1024.0
+                if scale_factor != 1.0:
+                    scaled_w = int(transformed_bg.size[0] * scale_factor)
+                    scaled_h = int(transformed_bg.size[1] * scale_factor)
+                    transformed_bg = transformed_bg.resize((scaled_w, scaled_h), Image.BILINEAR)
+
+                # Position background on canvas
+                img_w, img_h = transformed_bg.size
+                cx, cy = centering
+                paste_x = -int((img_w - self.preview_size) * cx)
+                paste_y = -int((img_h - self.preview_size) * cy)
+                result_canvas.paste(transformed_bg, (paste_x, paste_y), transformed_bg)
+
+            # Layer 2: Logo overlay
+            if self.logo_image is not None:
+                result_canvas = self._composite_logo_on_canvas(result_canvas, self.preview_size)
+
+            # Apply border if selected
+            if self.current_border and self.current_border.exists():
+                # Load and prepare border (use cache)
+                if self.border_cache is None:
+                    border = Image.open(self.current_border)
+                    border = ImageOps.exif_transpose(border).convert("RGBA")
+                    if border.size != (self.preview_size, self.preview_size):
+                        border = border.resize((self.preview_size, self.preview_size), Image.BILINEAR)
+                    self.border_cache = border
+                    self.border_mask_cache = corner_mask_from_border(border, threshold=18, shrink_px=8, feather=0.8)
+
+                border = self.border_cache
+                mask = self.border_mask_cache
+
+                # Apply border mask to canvas
+                result_canvas.putalpha(ImageChops.multiply(result_canvas.split()[-1], mask))
+
+                # Composite border on top
+                result_canvas = Image.alpha_composite(result_canvas, border)
+
+            # Convert to QPixmap for display
+            qimage = ImageQt.ImageQt(result_canvas)
+            pixmap = QPixmap.fromImage(qimage)
+
+            # Update preview
+            self.preview_view.set_image(pixmap)
+
+            # Update transform handle bounds after preview is set
+            self._update_handle_bounds()
+
+        except Exception as e:
+            print(f"Preview update error: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _check_export_ready(self):
+        """Check if export is ready and update button state."""
+        # Need at least background image and a border to export
+        has_content = self.background_image is not None or self.logo_image is not None
+        has_border = self.current_border is not None and self.current_border.exists()
+        ready = has_content and has_border
+
+        self.export_btn.setEnabled(ready)
+
+        if ready:
+            layers_info = []
+            if self.background_image is not None:
+                layers_info.append("background")
+            if self.logo_image is not None:
+                layers_info.append("logo")
+            self.export_info.setText(f"Ready to export ({' + '.join(layers_info)}) at 1024x1024")
+        elif not has_content:
+            self.export_info.setText("Upload a background or logo to export")
+        elif self.current_border is None:
+            self.export_info.setText("Select a platform to export")
+        else:
+            self.export_info.setText("Border file not found")
+
+    def _export_image(self):
+        """Export the final image with border at full resolution (supports layers)."""
+        if not self.export_btn.isEnabled():
+            return
+
+        # Get save path
+        default_name = f"{self.current_platform}_custom.png"
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Image",
+            default_name,
+            "PNG Image (*.png);;All Files (*)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            # Create canvas at full resolution
+            canvas = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+            centering = (self.offset_x, self.offset_y)
+
+            # Layer 1: Background with transformations
+            if self.background_image is not None:
+                print(f"[Export] Processing background layer...")
+                print(f"[Export] Background settings: rotation={self.rotation}°, zoom={self.zoom*100}%, offset=({self.offset_x}, {self.offset_y})")
+
+                # Apply transformations to background with HIGH QUALITY
+                transformed_bg = self._apply_transformations(self.background_image.copy(), use_high_quality=True)
+
+                # Position on canvas
+                img_w, img_h = transformed_bg.size
+                cx, cy = centering
+                paste_x = -int((img_w - 1024) * cx)
+                paste_y = -int((img_h - 1024) * cy)
+                print(f"[Export] Background size: {img_w}x{img_h}, position: ({paste_x}, {paste_y})")
+
+                canvas.paste(transformed_bg, (paste_x, paste_y), transformed_bg)
+
+            # Layer 2: Logo overlay
+            if self.logo_image is not None:
+                print(f"[Export] Processing logo layer...")
+                print(f"[Export] Logo settings: scale={self.logo_scale*100}%, pos=({self.logo_offset_x*100}%, {self.logo_offset_y*100}%), opacity={self.logo_opacity*100}%")
+                canvas = self._composite_logo_on_canvas(canvas, 1024, use_high_quality=True)
+
+            # Load and prepare border at full resolution
+            border = Image.open(self.current_border)
+            border = ImageOps.exif_transpose(border).convert("RGBA")
+            if border.size != (1024, 1024):
+                border = border.resize((1024, 1024), Image.LANCZOS)
+
+            # Apply border mask to canvas
+            mask = corner_mask_from_border(border, threshold=18, shrink_px=8, feather=0.8)
+            canvas.putalpha(ImageChops.multiply(canvas.split()[-1], mask))
+
+            # Composite border on top
+            result = Image.alpha_composite(canvas, border)
+
+            # Save
+            result.save(file_path, "PNG")
+
+            # Create summary message
+            summary = f"Image exported successfully at 1024x1024 to:\n{file_path}\n\n"
+            summary += f"Layers:\n"
+            if self.background_image is not None:
+                summary += f"  • Background: rotation={self.rotation}°, zoom={int(self.zoom * 100)}%\n"
+                summary += f"    Position: H={int(self.offset_x * 100)}%, V={int(self.offset_y * 100)}%\n"
+            if self.logo_image is not None:
+                summary += f"  • Logo: size={int(self.logo_scale * 100)}%, opacity={int(self.logo_opacity * 100)}%\n"
+                summary += f"    Position: H={int(self.logo_offset_x * 100)}%, V={int(self.logo_offset_y * 100)}%\n"
+
+            QMessageBox.information(
+                self,
+                "Export Complete",
+                summary
+            )
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Export Error",
+                f"Failed to export image:\n{e}"
+            )
+            import traceback
+            traceback.print_exc()
+
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle arrow keys for fine position adjustments."""
+        # Need at least a background to adjust position
+        if self.background_image is None:
+            super().keyPressEvent(event)
+            return
+
+        # Arrow key step size (0.01 = 1% adjustment)
+        step = 0.01
+
+        if event.key() == Qt.Key_Left:
+            self._on_position_changed(-step, 0)
+            event.accept()
+        elif event.key() == Qt.Key_Right:
+            self._on_position_changed(step, 0)
+            event.accept()
+        elif event.key() == Qt.Key_Up:
+            self._on_position_changed(0, -step)
+            event.accept()
+        elif event.key() == Qt.Key_Down:
+            self._on_position_changed(0, step)
+            event.accept()
+        else:
+            super().keyPressEvent(event)

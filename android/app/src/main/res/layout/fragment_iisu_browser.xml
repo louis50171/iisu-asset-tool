@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/theme_background">
+
+    <!-- Not Installed State -->
+    <LinearLayout
+        android:id="@+id/layoutNotInstalled"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="@dimen/spacing_xl"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/ic_iisu_home"
+            android:alpha="0.5"
+            android:contentDescription="@string/iisu_not_installed" />
+
+        <TextView
+            android:id="@+id/textNotInstalledTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_lg"
+            android:text="@string/iisu_not_installed"
+            style="@style/IisuTextAppearance.HeadlineSmall" />
+
+        <TextView
+            android:id="@+id/textNotInstalledDesc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:text="@string/iisu_not_installed_desc"
+            style="@style/IisuTextAppearance.Description"
+            android:gravity="center" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSelectRomFolder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_lg"
+            android:text="@string/select_rom_folder"
+            style="@style/IisuPrimaryButton"
+            app:backgroundTint="@null"
+            app:icon="@drawable/ic_folder"
+            app:iconTint="@color/theme_text_primary"
+            app:cornerRadius="8dp" />
+
+    </LinearLayout>
+
+    <!-- Browser Layout -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/layoutBrowser"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="@dimen/spacing_md">
+
+        <!-- Title Row with iiSU Page Title style -->
+        <TextView
+            android:id="@+id/textTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="@string/iisu_browser_title"
+            style="@style/IisuTextAppearance.PageTitle"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btnRefresh" />
+
+        <!-- Accent line under title -->
+        <View
+            android:id="@+id/accentLine"
+            android:layout_width="0dp"
+            android:layout_height="2dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_accent_line"
+            app:layout_constraintTop_toBottomOf="@id/textTitle"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- Refresh Button -->
+        <ImageButton
+            android:id="@+id/btnRefresh"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_refresh"
+            android:contentDescription="Refresh"
+            android:padding="8dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:tint="@color/theme_text_secondary" />
+
+        <!-- Platforms Label with iiSU Section Header style -->
+        <TextView
+            android:id="@+id/textPlatformsLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_md"
+            android:text="@string/iisu_platforms"
+            style="@style/IisuTextAppearance.SectionHeader"
+            app:layout_constraintTop_toBottomOf="@id/accentLine"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <!-- Platform Grid -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViewPlatforms"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:clipToPadding="false"
+            app:layout_constraintTop_toBottomOf="@id/textPlatformsLabel"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:listitem="@layout/item_platform" />
+
+        <!-- Progress Bar -->
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- Empty State -->
+        <TextView
+            android:id="@+id/textEmptyState"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textSize="@dimen/text_body"
+            android:textColor="@color/theme_text_secondary"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</FrameLayout>

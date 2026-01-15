@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/theme_background"
+    android:padding="@dimen/spacing_md">
+
+    <!-- Header with iiSU styling -->
+    <TextView
+        android:id="@+id/textTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        style="@style/IisuTextAppearance.TitleMedium"
+        tools:text="Select Icon for Super Mario Bros." />
+
+    <TextView
+        android:id="@+id/textSubtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        style="@style/IisuTextAppearance.Description"
+        tools:text="Found 5 options from 3 sources" />
+
+    <!-- Current Image Section (only shown if exists) -->
+    <LinearLayout
+        android:id="@+id/layoutCurrentImage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Current Image (will be replaced):"
+            android:textSize="12sp"
+            android:fontFamily="@font/calsans"
+            android:textColor="@color/accent_magenta" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="@dimen/preview_size_small"
+            android:layout_height="@dimen/preview_size_small"
+            android:layout_marginTop="4dp"
+            app:cardBackgroundColor="@color/theme_surface"
+            app:cardCornerRadius="8dp"
+            app:strokeWidth="2dp"
+            app:strokeColor="@color/accent_magenta">
+
+            <ImageView
+                android:id="@+id/imageCurrentArtwork"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+
+    <!-- Options Label with iiSU Section Header style -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_md"
+        android:text="Available Options:"
+        style="@style/IisuTextAppearance.SectionHeader"
+        android:textColor="@color/accent_cyan" />
+
+    <!-- Loading indicator -->
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="@dimen/spacing_lg"
+        android:indeterminate="true"
+        android:visibility="gone" />
+
+    <!-- No options message -->
+    <TextView
+        android:id="@+id/textNoOptions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_lg"
+        android:gravity="center"
+        android:text="No artwork found for this game."
+        style="@style/IisuTextAppearance.Description"
+        android:visibility="gone" />
+
+    <!-- Options Grid (horizontal scroll) -->
+    <HorizontalScrollView
+        android:id="@+id/scrollOptions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_sm"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/layoutOptions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingVertical="@dimen/spacing_sm" />
+
+    </HorizontalScrollView>
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_lg"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:fontFamily="@font/continuum"
+            style="@style/Widget.Material3.Button.TextButton" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSave"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/spacing_sm"
+            android:text="Save Selected"
+            android:enabled="false"
+            style="@style/IisuPrimaryButton"
+            app:backgroundTint="@null" />
+
+    </LinearLayout>
+
+</LinearLayout>

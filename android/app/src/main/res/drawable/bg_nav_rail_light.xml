@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Light mode navigation rail background (iiSU Network style) -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Light base -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface_light" />
+        </shape>
+    </item>
+    <!-- Subtle vertical gradient from cyan to magenta -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="#2000D4FF"
+                android:centerColor="#10000000"
+                android:endColor="#20FF00FF"
+                android:angle="270" />
+        </shape>
+    </item>
+    <!-- Right edge accent line -->
+    <item android:right="0dp" android:left="78dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:startColor="@color/accent_cyan"
+                android:centerColor="@color/iisu_purple"
+                android:endColor="@color/accent_magenta"
+                android:angle="270" />
+        </shape>
+    </item>
+</layer-list>

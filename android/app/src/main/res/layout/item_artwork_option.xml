@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/cardOption"
+    android:layout_width="140dp"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="@dimen/spacing_sm"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardBackgroundColor="@color/theme_surface"
+    app:cardCornerRadius="12dp"
+    app:strokeWidth="2dp"
+    app:strokeColor="@color/theme_border_color"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/spacing_sm">
+
+        <!-- Thumbnail - Square aspect ratio for icons -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="124dp">
+
+            <ImageView
+                android:id="@+id/imageThumbnail"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:background="@color/theme_card_background"
+                tools:src="@drawable/ic_iisu_home" />
+
+            <!-- Loading spinner for thumbnail -->
+            <ProgressBar
+                android:id="@+id/progressThumbnail"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center"
+                android:visibility="gone" />
+
+            <!-- Selection indicator -->
+            <ImageView
+                android:id="@+id/iconSelected"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="top|end"
+                android:layout_margin="4dp"
+                android:src="@drawable/ic_check_circle"
+                android:visibility="gone"
+                app:tint="@color/accent_cyan" />
+
+        </FrameLayout>
+
+        <!-- Source label - Continuum Bold for single word labels -->
+        <TextView
+            android:id="@+id/textSource"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_xs"
+            android:gravity="center"
+            android:textSize="11sp"
+            android:fontFamily="@font/continuum"
+            android:textColor="@color/accent_cyan"
+            tools:text="SteamGridDB" />
+
+        <!-- Dimensions (optional) - Cal Sans for descriptions -->
+        <TextView
+            android:id="@+id/textDimensions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textSize="10sp"
+            android:fontFamily="@font/calsans"
+            android:textColor="@color/theme_text_secondary"
+            android:visibility="gone"
+            tools:text="1024x1024"
+            tools:visibility="visible" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

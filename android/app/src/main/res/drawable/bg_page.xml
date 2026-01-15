@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Page background with dot grid pattern and subtle glows (iiSU Network style) -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Dark base color -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/background" />
+        </shape>
+    </item>
+    <!-- Dot grid pattern overlay - row 1 -->
+    <item android:top="0dp" android:left="0dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="0"
+                android:startColor="#0800D4FF"
+                android:centerColor="#00000000"
+                android:endColor="#0800D4FF" />
+        </shape>
+    </item>
+    <!-- Dot grid pattern overlay - diagonal lines -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="45"
+                android:startColor="#00000000"
+                android:centerColor="#05FF00FF"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+    <!-- Subtle top-right cyan glow -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.9"
+                android:centerY="0.1"
+                android:gradientRadius="400dp"
+                android:startColor="#1500D4FF"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+    <!-- Subtle bottom-left magenta glow -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.1"
+                android:centerY="0.9"
+                android:gradientRadius="400dp"
+                android:startColor="#12FF00FF"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+    <!-- Center purple accent -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.5"
+                android:centerY="0.5"
+                android:gradientRadius="600dp"
+                android:startColor="#089575CD"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+</layer-list>

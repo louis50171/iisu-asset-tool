@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_iisu_browser"
+        android:icon="@drawable/ic_iisu_home"
+        android:title="@string/nav_iisu_browser" />
+
+    <item
+        android:id="@+id/nav_icon_generator"
+        android:icon="@drawable/ic_icon_generator"
+        android:title="@string/nav_icon_generator" />
+
+    <item
+        android:id="@+id/nav_cover_generator"
+        android:icon="@drawable/ic_cover_generator"
+        android:title="@string/nav_cover_generator" />
+
+    <item
+        android:id="@+id/nav_custom_image"
+        android:icon="@drawable/ic_custom_image"
+        android:title="@string/nav_custom_image" />
+
+    <item
+        android:id="@+id/nav_settings"
+        android:icon="@drawable/ic_settings"
+        android:title="@string/nav_settings" />
+
+</menu>

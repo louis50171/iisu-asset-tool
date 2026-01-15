@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/theme_background"
+    tools:context=".MainActivity">
+
+    <!-- Navigation Rail - Side navigation for landscape mode (iiSU style) -->
+    <com.google.android.material.navigationrail.NavigationRailView
+        android:id="@+id/navigationRail"
+        android:layout_width="80dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_nav_rail"
+        app:labelVisibilityMode="labeled"
+        app:menuGravity="center"
+        app:menu="@menu/navigation_rail"
+        app:itemIconTint="@color/nav_item_color"
+        app:itemTextColor="@color/nav_item_color"
+        app:itemActiveIndicatorStyle="@style/IisuNavIndicator"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- Fragment container for main content -->
+    <FrameLayout
+        android:id="@+id/fragment_container"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_page"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/navigationRail"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

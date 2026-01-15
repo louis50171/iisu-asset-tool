@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- iiSU gradient effect simulated with state colors -->
+    <item android:color="@color/iisu_gradient_start" android:state_checked="true" />
+    <item android:color="@color/text_secondary" />
+</selector>

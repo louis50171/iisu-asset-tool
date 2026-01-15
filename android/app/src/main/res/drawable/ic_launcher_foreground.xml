@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Background circle -->
+    <path
+        android:fillColor="#1a1a2e"
+        android:pathData="M54,54m-50,0a50,50 0,1 1,100 0a50,50 0,1 1,-100 0"/>
+    <!-- Simplified "iiSU" text representation as abstract shapes -->
+    <path
+        android:fillColor="#e94560"
+        android:pathData="M30,40L30,68L36,68L36,40z"/>
+    <path
+        android:fillColor="#e94560"
+        android:pathData="M42,40L42,68L48,68L48,40z"/>
+    <path
+        android:fillColor="#e94560"
+        android:pathData="M54,50C54,44.48 58.48,40 64,40L78,40L78,46L64,46C61.79,46 60,47.79 60,50C60,52.21 61.79,54 64,54L72,54C77.52,54 82,58.48 82,64C82,69.52 77.52,74 72,74L54,74L54,68L72,68C74.21,68 76,66.21 76,64C76,61.79 74.21,60 72,60L64,60C58.48,60 54,55.52 54,50z"/>
+</vector>

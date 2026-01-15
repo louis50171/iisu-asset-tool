@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Touch-friendly dimensions (minimum 48dp touch targets per Material Design) -->
+    <dimen name="touch_target_min">48dp</dimen>
+    <dimen name="button_min_height">56dp</dimen>
+    <dimen name="list_item_min_height">72dp</dimen>
+
+    <!-- Spacing -->
+    <dimen name="spacing_xs">4dp</dimen>
+    <dimen name="spacing_sm">8dp</dimen>
+    <dimen name="spacing_md">16dp</dimen>
+    <dimen name="spacing_lg">24dp</dimen>
+    <dimen name="spacing_xl">32dp</dimen>
+
+    <!-- Card/container dimensions -->
+    <dimen name="card_corner_radius">12dp</dimen>
+    <dimen name="card_elevation">4dp</dimen>
+
+    <!-- Text sizes (larger for touch screens) -->
+    <dimen name="text_title">24sp</dimen>
+    <dimen name="text_subtitle">18sp</dimen>
+    <dimen name="text_body">16sp</dimen>
+    <dimen name="text_caption">14sp</dimen>
+
+    <!-- Image preview sizes -->
+    <dimen name="preview_size_small">100dp</dimen>
+    <dimen name="preview_size_medium">200dp</dimen>
+    <dimen name="preview_size_large">300dp</dimen>
+
+    <!-- Icon sizes -->
+    <dimen name="icon_size_small">24dp</dimen>
+    <dimen name="icon_size_medium">48dp</dimen>
+    <dimen name="icon_size_large">72dp</dimen>
+</resources>
