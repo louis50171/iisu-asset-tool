@@ -32,6 +32,7 @@ a = Analysis(
         'imagehash',
         'bs4',
         'tqdm',
+        'aggdraw',  # Required by psd_tools for vector shape rendering
     ] + psd_tools_imports,  # Add all psd_tools submodules
     hookspath=[],
     hooksconfig={},
@@ -59,7 +60,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,  # Enable console for debugging - set to False for release
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
