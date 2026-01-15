@@ -259,15 +259,37 @@ class BorderPreview(QLabel):
         self.schedule_update()
 
     def _check_psd_availability(self):
-        """Check if the PSD template file exists and is accessible."""
+        """Check if the PSD template file exists and can be loaded."""
         psd_path = get_templates_dir() / "iisuTemplates.psd"
-        if psd_path.exists():
-            self._psd_available = True
-            self._psd_error = None
-        else:
+        if not psd_path.exists():
             self._psd_available = False
             self._psd_error = f"PSD template not found at: {psd_path}"
             print(f"[BorderPreview] {self._psd_error}")
+            return
+
+        # Try to actually load the PSD to verify it works
+        try:
+            test_psd = PSDImage.open(str(psd_path))
+            # Verify we can find the expected layers
+            found_game_template = False
+            for layer in test_psd:
+                if layer.name == 'Game Template':
+                    found_game_template = True
+                    break
+            if not found_game_template:
+                self._psd_available = False
+                self._psd_error = "PSD loaded but 'Game Template' layer not found"
+                print(f"[BorderPreview] {self._psd_error}")
+                return
+            self._psd_available = True
+            self._psd_error = None
+            print(f"[BorderPreview] PSD template loaded successfully from: {psd_path}")
+        except Exception as e:
+            self._psd_available = False
+            self._psd_error = f"Failed to load PSD: {e}"
+            print(f"[BorderPreview] {self._psd_error}")
+            import traceback
+            traceback.print_exc()
 
     def set_color1(self, color: QColor):
         self.color1 = color

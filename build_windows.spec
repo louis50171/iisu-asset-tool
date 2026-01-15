@@ -1,14 +1,21 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 block_cipher = None
+
+# Collect all psd_tools submodules to ensure PSD loading works
+psd_tools_imports = collect_submodules('psd_tools')
+
+# Collect psd_tools data files (if any)
+psd_tools_datas = collect_data_files('psd_tools')
 
 # Minimal build - assets are distributed alongside the exe by GitHub Actions
 a = Analysis(
     ['run_gui.py'],
     pathex=[],
     binaries=[],
-    datas=[],  # No bundled assets - they go next to the exe
+    datas=psd_tools_datas,  # Include psd_tools data files
     hiddenimports=[
         'PySide6.QtCore',
         'PySide6.QtGui',
@@ -18,9 +25,6 @@ a = Analysis(
         'PIL._imagingtk',
         'PIL._tkinter_finder',
         'PIL.ImageQt',
-        'psd_tools',
-        'psd_tools.psd',
-        'psd_tools.psd.layer_and_mask',
         'yaml',
         'requests',
         'numpy',
@@ -28,7 +32,7 @@ a = Analysis(
         'imagehash',
         'bs4',
         'tqdm',
-    ],
+    ] + psd_tools_imports,  # Add all psd_tools submodules
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -55,7 +59,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,  # Enable console for debugging - set to False for release
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
