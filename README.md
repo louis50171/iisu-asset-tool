@@ -1,5 +1,5 @@
 # iiSU Asset Tool
-![alt text](https://github.com/viik4/iisu-asset-tool/blob/809a64d3c86609240f0dddf959fc4dc1f584dd60/AssetToolGitHub.png){height=100}
+<img src="https://github.com/viik4/iisu-asset-tool/blob/809a64d3c86609240f0dddf959fc4dc1f584dd60/AssetToolGitHub.png" width="450" height="250">
 
 Create custom icons, borders, and covers for your game library. Built for the [iiSU Network](https://iisu.network/) community.
 
