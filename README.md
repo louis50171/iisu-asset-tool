@@ -1,4 +1,5 @@
 # iiSU Asset Tool
+<img src="https://github.com/viik4/iisu-asset-tool/blob/809a64d3c86609240f0dddf959fc4dc1f584dd60/AssetToolGitHub.png" width="450" height="250">
 
 Create custom icons, borders, and covers for your game library. Built for the [iiSU Network](https://iisu.network/) community.
 
@@ -94,50 +95,6 @@ Generated assets are saved to:
 - **Review Queue:** `review/` folder (for manual review)
 - **Custom Exports:** Your chosen location
 
-## Running from Source
-
-### Requirements
-- Python 3.8+
-- Dependencies listed in `requirements.txt`
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/viik-4/iisu-asset-tool.git
-cd iisu-asset-tool
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the GUI
-python run_gui.py
-
-# Or run the CLI
-python run.py
-```
-
-### Building Executables
-
-```bash
-# Windows
-pyinstaller build_windows.spec
-
-# macOS
-pyinstaller build_macos.spec
-
-# Linux
-pyinstaller build_linux.spec
-```
-
-## Android App
-
-The Android version is a native Kotlin app located in the `android/` directory.
-
-### Building
-1. Open `android/` in Android Studio
-2. Sync Gradle dependencies
-3. Build APK or run on device
 
 ## Configuration
 
