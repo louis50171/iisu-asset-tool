@@ -279,6 +279,14 @@ class OptionsDialog(QDialog):
         source_layout.addWidget(QLabel("Drag to reorder priority:"))
         source_layout.addWidget(self.source_priority)
 
+        # Save Source Priority Button
+        save_priority_btn_layout = QHBoxLayout()
+        save_priority_btn_layout.addStretch()
+        btn_save_priority = QPushButton("Save Source Priority to Config")
+        btn_save_priority.clicked.connect(self._save_sources_to_config)
+        save_priority_btn_layout.addWidget(btn_save_priority)
+        source_layout.addLayout(save_priority_btn_layout)
+
         source_group.setLayout(source_layout)
         scroll_layout.addWidget(source_group)
 
@@ -679,6 +687,36 @@ class OptionsDialog(QDialog):
         path = QFileDialog.getExistingDirectory(self, "Select Fallback Icons Directory", start_dir, QFileDialog.ShowDirsOnly)
         if path:
             self.fallback_icons_path.setText(path)
+
+    def _save_sources_to_config(self):
+        """Save source priority to the config file."""
+        import yaml
+        config_path = Path(self.config_path.text()) if self.config_path.text() else None
+        if not config_path or not config_path.exists():
+            QMessageBox.warning(self, "Error", "No valid config file specified. Please set a config file in the General tab.")
+            return
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f) or {}
+
+            # Get source order and clean it for saving
+            source_order = self.source_priority.get_source_order()
+            sources_clean = []
+            for src in source_order:
+                clean_src = {"id": src["id"], "enabled": src["enabled"]}
+                sources_clean.append(clean_src)
+
+            # Save to art_sources.providers (same format as icon_generator_tab)
+            if "art_sources" not in cfg:
+                cfg["art_sources"] = {}
+            cfg["art_sources"]["providers"] = sources_clean
+
+            with open(config_path, "w", encoding="utf-8") as f:
+                yaml.dump(cfg, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+            QMessageBox.information(self, "Success", "Source priority saved to config file.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to save config: {e}")
 
     def _on_export_format_changed(self, format_text: str):
         is_jpeg = format_text.upper() in ("JPEG", "JPG")
