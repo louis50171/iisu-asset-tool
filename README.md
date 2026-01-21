@@ -1,7 +1,42 @@
-# iiSU Asset Tool
+# iiSU Asset Tool (Fork)
 <img src="https://github.com/viik4/iisu-asset-tool/blob/809a64d3c86609240f0dddf959fc4dc1f584dd60/AssetToolGitHub.png" width="450" height="250">
 
 Create custom icons, borders, and covers for your game library. Built for the [iiSU Network](https://iisu.network/) community.
+
+> **Note:** This is a fork of [viik4/iisu-asset-tool](https://github.com/viik4/iisu-asset-tool) with additional features and improvements.
+
+## Fork Improvements
+
+This fork adds the following features not available in the original:
+
+### Existing Assets Tab
+A new dedicated tab to browse and manage previously generated icons:
+- **Scan output folder** to view all generated icons organized by platform
+- **Search and filter** by platform or game name
+- **Double-click to re-scrape** any icon with interactive mode enabled by default
+- **Batch re-scrape** multiple selected icons at once
+- **Select All / Select None** for quick batch operations
+- Grid layout with 6 icons per row for better overview
+
+### Re-scrape Functionality
+Re-scrape existing icons without starting from scratch:
+- Available from both the Existing Assets tab and Icon Generator tab
+- **Interactive mode enabled by default** - you always get to choose from all available artwork
+- Preserves the correct platform border automatically
+- Cancel button to stop batch operations at any time
+
+### Improved Source Priority System
+Enhanced artwork source management:
+- **Drag-and-drop reordering** of artwork sources (replaced simple dropdown)
+- **Checkboxes to enable/disable** individual sources
+- **Enable All / Disable All** quick action buttons
+- Visual feedback with help text
+- Sources are tried in order from top to bottom
+
+### Memory Optimizations
+- Better handling of large ROM collections
+- Optimized preview loading
+- Removed unnecessary preview item limits
 
 ## Download
 
